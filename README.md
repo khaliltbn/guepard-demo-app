@@ -269,7 +269,7 @@ This method uses Git branches for code changes and either CLI or dashboard for d
    ```bash
    cd components/api
    # Stop the server (Ctrl+C)
-   bunx prisma db push
+   bunx prisma migrate dev
    # Restart the server
    bun run dev
    ```
@@ -308,7 +308,7 @@ This method uses Git branches for code changes and either CLI or dashboard for d
    ```bash
    cd components/api
    # Stop the server (Ctrl+C)
-   bunx prisma db push
+   bunx prisma migrate dev
    # Restart the server
    bun run dev
    ```
