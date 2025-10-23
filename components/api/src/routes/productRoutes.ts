@@ -42,18 +42,30 @@ router.get('/:id', async (req, res) => {
   }
 });
 
+// POST /api/products - Create a new product (handles discountPrice)
 router.post('/', async (req, res) => {
   try {
-    const { name, description, price, stock, imageUrl, categoryId } = req.body;
+    // 👇 Destructure discountPrice from the body
+    const { name, description, price, stock, imageUrl, categoryId, discountPrice } = req.body;
+
+    // Helper to parse discount price (returns null if invalid or undefined)
+    const parseDiscount = (value: any): number | null => {
+      if (value === undefined || value === null || value === '') return null;
+      const num = parseFloat(value);
+      return !isNaN(num) && num >= 0 ? num : null;
+    };
+
     const newProduct = await prisma.product.create({
       data: {
         name,
         description,
-        price: parseFloat(price),
-        stock: parseInt(stock),
+        price: parseFloat(price), // Assuming price is required and sent as string/number
+        discountPrice: parseDiscount(discountPrice), // 👇 Use parsed discount price
+        stock: parseInt(stock), // Assuming stock is required and sent as string/number
         imageUrl,
-        categoryId: categoryId,
+        categoryId,
       },
+      include: { category: true } // Include category in response
     });
     res.status(201).json(newProduct);
   } catch (error) {
@@ -61,24 +73,36 @@ router.post('/', async (req, res) => {
   }
 });
 
+// PUT /api/products/:id - Update an existing product (handles discountPrice)
 router.put('/:id', async (req, res) => {
   const { id } = req.params;
   try {
-    const { name, description, price, stock, imageUrl, categoryId } = req.body;
+    // 👇 Destructure discountPrice from the body
+    const { name, description, price, stock, imageUrl, categoryId, discountPrice } = req.body;
+
+    // Helper (can be shared or defined locally)
+    const parseDiscount = (value: any): number | null => {
+      if (value === undefined || value === null || value === '') return null;
+      const num = parseFloat(value);
+      return !isNaN(num) && num >= 0 ? num : null;
+    };
+
     const updatedProduct = await prisma.product.update({
       where: { id },
       data: {
         name,
         description,
         price: parseFloat(price),
+        discountPrice: parseDiscount(discountPrice), // 👇 Use parsed discount price
         stock: parseInt(stock),
         imageUrl,
-        categoryId: categoryId,
+        categoryId,
       },
+       include: { category: true } // Include category in response
     });
     res.json(updatedProduct);
   } catch (error) {
-    res.status(500).json({ error: 'Failed to update product' });
+     res.status(500).json({ error: 'Failed to update product' });
   }
 });
 

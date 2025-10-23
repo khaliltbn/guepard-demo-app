@@ -11,12 +11,13 @@ export interface Product {
   name: string;
   description: string;
   price: number;
+  discountPrice?: number | null;
   stock: number;
+  imageUrl: string | null;
+  createdAt: string;
+  updatedAt: string;
   categoryId: string;
-  category?: Category;
-  imageUrl: string;
-  created_at: string;
-  updated_at: string;
+  category: Category;
 }
 
 export interface Order {

@@ -47,7 +47,8 @@ export const getProducts = async (params: GetProductsParams = {}): Promise<Produ
   const products: Product[] = await response.json();
   return products.map(product => ({
     ...product,
-    price: parseFloat(product.price as any), 
+    price: parseFloat(product.price as any),
+    discountPrice: product.discountPrice ? parseFloat(product.discountPrice as any) : null,
   }));
 };
 

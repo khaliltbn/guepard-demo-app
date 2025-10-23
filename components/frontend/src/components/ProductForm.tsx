@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Product, Category } from "@/types/types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -10,25 +10,44 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 interface ProductFormProps {
   product?: Product;
   categories: Category[];
-  onSubmit: (data: Partial<Product>) => void;
+  onSubmit: (data: Partial<Product> & { category_id?: string; image_url?: string, discountPrice?: number | null }) => void; // Update onSubmit type
   onCancel: () => void;
 }
 
 export const ProductForm = ({ product, categories, onSubmit, onCancel }: ProductFormProps) => {
+  // Add discountPrice to the initial state
   const [formData, setFormData] = useState({
     name: product?.name || "",
     description: product?.description || "",
     price: product?.price?.toString() || "",
+    discountPrice: product?.discountPrice?.toString() || "", // Add discountPrice
     stock: product?.stock?.toString() || "",
     category_id: product?.categoryId || "",
     image_url: product?.imageUrl || "",
   });
 
+  // 👇 Add useEffect to update form when 'product' prop changes (for editing)
+  useEffect(() => {
+    setFormData({
+        name: product?.name || "",
+        description: product?.description || "",
+        price: product?.price?.toString() || "",
+        discountPrice: product?.discountPrice?.toString() || "", // Update on edit
+        stock: product?.stock?.toString() || "",
+        category_id: product?.categoryId || "",
+        image_url: product?.imageUrl || "",
+    });
+  }, [product]); // Re-run effect if the product prop changes
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    // Parse discountPrice, defaulting to null if empty or invalid
+    const discount = formData.discountPrice ? parseFloat(formData.discountPrice) : null;
+
     onSubmit({
       ...formData,
       price: parseFloat(formData.price),
+      discountPrice: (discount !== null && !isNaN(discount) && discount >= 0) ? discount : null, // Ensure it's a valid non-negative number or null
       stock: parseInt(formData.stock),
     });
   };
@@ -76,6 +95,16 @@ export const ProductForm = ({ product, categories, onSubmit, onCancel }: Product
                 value={formData.price}
                 onChange={(e) => setFormData({ ...formData, price: e.target.value })}
                 required
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="discountPrice">Discount Price (TND, Optional)</Label>
+              <Input
+                id="discountPrice" type="number" step="0.01" min="0"
+                value={formData.discountPrice}
+                onChange={(e) => setFormData({ ...formData, discountPrice: e.target.value })}
+                placeholder="e.g., 149.99"
               />
             </div>
 

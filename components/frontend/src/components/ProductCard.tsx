@@ -53,9 +53,14 @@ export const ProductCard = ({
       </CardHeader>
 
       <CardContent className="mt-auto">
-        <p className="text-2xl font-bold text-primary font-heading">
-          ${product.price.toFixed(2)}
-        </p>
+       {product.discountPrice && product.discountPrice > 0 ? (
+          <div className="flex items-end gap-2">
+          <p className="text-2xl font-bold text-destructive font-heading">${product.discountPrice.toFixed(2)}</p>
+          <s className="text-lg font-medium text-muted-foreground">${product.price.toFixed(2)}</s>
+          </div>
+          ) : (
+        <p className="text-2xl font-bold text-primary font-heading">${product.price.toFixed(2)}</p>
+        )}
       </CardContent>
 
       <CardFooter className="gap-2">

@@ -128,7 +128,7 @@ bun run dev
 ```
 
 Your application should now be running at:
-- **Frontend**: http://localhost:8080
+- **Frontend**: http://localhost:5173
 - **Backend API**: http://localhost:3001
 
 ## 🐳 Docker Setup (Alternative)

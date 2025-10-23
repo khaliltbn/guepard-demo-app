@@ -78,11 +78,13 @@ const Admin = () => {
     onError: (error) => onError(error, "Failed to delete product"),
   });
 
-  const handleSubmit = (data: Partial<Product> & { category_id?: string; image_url?: string }) => {
+  const handleSubmit = (data: Partial<Product> & { category_id?: string; image_url?: string; discountPrice?: number | null }) => {
+    // Construct the data object for the API, now including discountPrice
     const productDataForApi = {
       name: data.name!,
       description: data.description!,
       price: data.price!,
+      discountPrice: data.discountPrice ?? null, // Include discountPrice, defaulting to null if undefined
       stock: data.stock!,
       imageUrl: data.image_url!,
       categoryId: data.category_id!,
