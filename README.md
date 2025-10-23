@@ -1,16 +1,10 @@
-# GuepardStore Demo App 🐆
-
-Welcome to the GuepardStore Demo App! This is a full-stack e-commerce application built to showcase the powerful database branching, versioning, and time-travel features of the **Guepard PaaS**.
-
-The application is a modern, responsive product management system featuring a public product catalog, a shopping cart, and a password-protected admin dashboard for managing inventory.
-
-![GuepardStore Demo App Screenshot](/readme/home.png)
-
-## 🎯 What is Guepard?
+# Guepard CLI: Git-Like Database Management 🐆
 
 **Guepard** is a revolutionary Platform-as-a-Service (PaaS) that brings Git-like version control to your databases. Just like Git revolutionized code management, Guepard transforms how you handle database changes, deployments, and collaboration.
 
-### 🌟 Key Features
+## 🌟 What is Guepard?
+
+### **Key Features**
 
 - **🔄 Database Branching**: Create isolated database branches for features, experiments, and testing
 - **📸 Snapshots**: Capture database states at any point in time
@@ -23,7 +17,7 @@ The application is a modern, responsive product management system featuring a pu
 
 The Guepard CLI is your gateway to managing databases with Git-like workflows. Here's how to install it:
 
-### **Option 1: Using Homebrew (Recommended)**
+### **Using Homebrew (Recommended)**
 
 ```bash
 # Add Guepard tap
@@ -99,6 +93,8 @@ guepard branch \
 ## 🎯 GuepardStore Demo: See Guepard in Action
 
 The GuepardStore Demo App is the perfect way to experience Guepard's capabilities. This e-commerce application demonstrates real-world scenarios where database versioning makes a difference.
+
+![GuepardStore Demo App Screenshot](/readme/home.png)
 
 ### **What You'll Learn**
 
@@ -269,7 +265,7 @@ This method uses Git branches for code changes and either CLI or dashboard for d
    ```bash
    cd components/api
    # Stop the server (Ctrl+C)
-   bunx prisma db push
+   bunx prisma migrate dev
    # Restart the server
    bun run dev
    ```
@@ -308,7 +304,7 @@ This method uses Git branches for code changes and either CLI or dashboard for d
    ```bash
    cd components/api
    # Stop the server (Ctrl+C)
-   bunx prisma db push
+   bunx prisma migrate dev
    # Restart the server
    bun run dev
    ```
