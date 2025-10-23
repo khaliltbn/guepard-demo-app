@@ -128,7 +128,7 @@ bun run dev
 ```
 
 Your application should now be running at:
-- **Frontend**: http://localhost:5173
+- **Frontend**: http://localhost:8080
 - **Backend API**: http://localhost:3001
 
 ## 🐳 Docker Setup (Alternative)
@@ -163,6 +163,85 @@ For detailed Docker instructions, see [DOCKER.md](./DOCKER.md).
 
 ## 🎯 Testing Guepard's Git-Like Features
 
+### Prerequisites: Install Guepard CLI
+
+Before testing Guepard's features, you need to install and authenticate with the Guepard CLI:
+
+```bash
+# Install Guepard CLI (requires Rust)
+git clone https://github.com/Guepard-Corp/guepard-cli
+cd guepard-cli
+cargo build --release
+
+# Add to your PATH
+sudo cp target/release/guepard /usr/local/bin/
+
+# Authenticate with your Guepard account
+guepard login
+```
+
+**Follow the interactive login process:**
+1. Run `guepard login`
+2. Open the provided URL in your browser
+3. Complete authentication in the browser
+4. Enter the verification code in the terminal
+
+## 🐆 Essential Guepard CLI Commands
+
+### Database Branch Management
+
+```bash
+# List all your deployments
+guepard list deployments
+
+# List branches for a deployment
+guepard branch --deployment-id YOUR_DEPLOYMENT_ID
+
+# Create a new branch
+guepard branch \
+  --deployment-id YOUR_DEPLOYMENT_ID \
+  --snapshot-id YOUR_SNAPSHOT_ID \
+  --name feature-name \
+  --checkout \
+  --ephemeral
+
+# Switch between branches
+guepard checkout \
+  --deployment-id YOUR_DEPLOYMENT_ID \
+  --branch-id BRANCH_ID
+
+# Create snapshots (commits)
+guepard commit \
+  --message "Add discount feature" \
+  --deployment-id YOUR_DEPLOYMENT_ID \
+  --branch-id BRANCH_ID
+```
+
+### Monitoring and Logs
+
+```bash
+# View deployment logs
+guepard log --deployment-id YOUR_DEPLOYMENT_ID --follow
+
+# Check compute status
+guepard compute status --deployment-id YOUR_DEPLOYMENT_ID
+
+# View usage and quotas
+guepard usage
+```
+
+### Getting Help
+
+```bash
+# Get help for any command
+guepard --help
+guepard branch --help
+guepard checkout --help
+
+# Show current configuration
+guepard config --show
+```
+
 ### Method 1: Using the Demo Control Panel (Recommended)
 
 The app includes a **Demo Control Panel** that provides a UI to manage database connections and feature patches.
@@ -173,12 +252,14 @@ The app includes a **Demo Control Panel** that provides a UI to manage database 
    - Optionally add a shadow database URL
    - Click "Update Backend .env"
 3. **Apply Feature Patches**: Use the "Apply Feature Files" button to enable the discount feature
-4. **Switch Database Branches**: In your Guepard dashboard, switch to the `discout-feature` branch
+4. **Switch Database Branches**: Choose one of these options:
+   - **Option A**: Use Guepard CLI: `guepard checkout --deployment-id YOUR_ID --branch-id BRANCH_ID`
+   - **Option B**: Use Guepard Dashboard: Switch to the `discout-feature` branch in your browser
 5. **Restart Backend**: Stop and restart your backend server to apply changes
 
-### Method 2A: Using Feature Patch Scripts
+### Method 2A: Using Feature Patch Scripts + Database Branch Management
 
-This method uses automated scripts to apply/revert code changes while you manually switch database branches in Guepard.
+This method uses automated scripts to apply/revert code changes while you manage database branches using either the CLI or dashboard.
 
 #### Applying the Discount Feature
 
@@ -188,15 +269,33 @@ This method uses automated scripts to apply/revert code changes while you manual
    ./demo/discount-feature/apply-discount-feature.sh
    ```
 
-2. **Switch to the feature branch in Guepard**:
+2. **Create and switch to feature branch** (choose one option):
+   
+   **Option A: Using Guepard CLI**:
+   ```bash
+   # List your deployments to get the deployment ID
+   guepard list deployments
+   
+   # Create a new branch for the discount feature
+   guepard branch \
+     --deployment-id YOUR_DEPLOYMENT_ID \
+     --snapshot-id YOUR_SNAPSHOT_ID \
+     --name discout-feature \
+     --checkout \
+     --ephemeral
+   ```
+   
+   **Option B: Using Guepard Dashboard**:
    - Go to your Guepard dashboard
-   - Switch your database to the `discout-feature` branch
+   - Create a new branch called `discout-feature`
+   - Switch to the new branch
 
 3. **Update backend**:
    ```bash
    cd components/api
    # Stop the server (Ctrl+C)
-   bunx prisma migrate dev --name "add-discounts"
+   bunx prisma db push
+   # Restart the server
    bun run dev
    ```
 
@@ -211,20 +310,35 @@ This method uses automated scripts to apply/revert code changes while you manual
 
 #### Rolling Back the Discount Feature
 
-1. **Roll back the code**:
+1. **Revert the code patch**:
    ```bash
    # From project root
    ./demo/discount-feature/rollback-discount-feature.sh
    ```
 
-2. **Switch back to main branch in Guepard**:
+2. **Switch back to main branch** (choose one option):
+   
+   **Option A: Using Guepard CLI**:
+   ```bash
+   # List branches to see available options
+   guepard branch --deployment-id YOUR_DEPLOYMENT_ID
+   
+   # Checkout the main branch
+   guepard checkout \
+     --deployment-id YOUR_DEPLOYMENT_ID \
+     --branch-id MAIN_BRANCH_ID
+   ```
+   
+   **Option B: Using Guepard Dashboard**:
    - Go to your Guepard dashboard
-   - Switch your database back to the `main` branch
+   - Switch back to the `main` branch
 
-3. **Restart backend**:
+3. **Update backend**:
    ```bash
    cd components/api
    # Stop the server (Ctrl+C)
+   bunx prisma db push
+   # Restart the server
    bun run dev
    ```
 
@@ -237,9 +351,9 @@ This method uses automated scripts to apply/revert code changes while you manual
 
 5. **Verify the rollback**: The app should be back to its original state without discounts.
 
-### Method 2B: Using Git Branch Checkout
+### Method 2B: Using Git Branch Checkout + Database Branch Management
 
-This method uses git to switch between different code versions while you manually switch database branches in Guepard.
+This method uses Git branches for code changes and either CLI or dashboard for database branch management.
 
 #### Applying the Discount Feature
 
@@ -249,15 +363,30 @@ This method uses git to switch between different code versions while you manuall
    git checkout discout-feature
    ```
 
-2. **Switch to the feature branch in Guepard**:
+2. **Create and switch to feature database branch** (choose one option):
+   
+   **Option A: Using Guepard CLI**:
+   ```bash
+   # Create a new database branch for the discount feature
+   guepard branch \
+     --deployment-id YOUR_DEPLOYMENT_ID \
+     --snapshot-id YOUR_SNAPSHOT_ID \
+     --name discout-feature \
+     --checkout \
+     --ephemeral
+   ```
+   
+   **Option B: Using Guepard Dashboard**:
    - Go to your Guepard dashboard
-   - Switch your database to the `discout-feature` branch
+   - Create a new branch called `discout-feature`
+   - Switch to the new branch
 
 3. **Update backend**:
    ```bash
    cd components/api
    # Stop the server (Ctrl+C)
-   bunx prisma migrate dev --name "add-discounts"
+   bunx prisma db push
+   # Restart the server
    bun run dev
    ```
 
@@ -278,14 +407,26 @@ This method uses git to switch between different code versions while you manuall
    git checkout main
    ```
 
-2. **Switch back to main branch in Guepard**:
+2. **Switch back to main database branch** (choose one option):
+   
+   **Option A: Using Guepard CLI**:
+   ```bash
+   # Checkout the main database branch
+   guepard checkout \
+     --deployment-id YOUR_DEPLOYMENT_ID \
+     --branch-id MAIN_BRANCH_ID
+   ```
+   
+   **Option B: Using Guepard Dashboard**:
    - Go to your Guepard dashboard
-   - Switch your database back to the `main` branch
+   - Switch back to the `main` branch
 
-3. **Restart backend**:
+3. **Update backend**:
    ```bash
    cd components/api
    # Stop the server (Ctrl+C)
+   bunx prisma db push
+   # Restart the server
    bun run dev
    ```
 
@@ -360,7 +501,7 @@ bun run preview  # Preview production build
 
 **Port Conflicts**:
 - Backend runs on port 3001 by default
-- Frontend runs on port 5173 by default
+- Frontend runs on port 8080 by default
 - Change ports in `.env` files if needed
 
 ## 🎯 Next Steps
