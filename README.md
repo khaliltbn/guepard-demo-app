@@ -1,248 +1,227 @@
 # GuepardStore Demo App 🐆
 
-Welcome to the GuepardStore Demo App! This is a full-stack e-commerce application built to showcase the powerful **database branching**, **versioning**, and **time-travel features** of the **Guepard PaaS**.
+Welcome to the GuepardStore Demo App! This is a full-stack e-commerce application built to showcase the powerful database branching, versioning, and time-travel features of the **Guepard PaaS**.
 
-The application demonstrates how to use Guepard's git-like database features to safely develop, test, and deploy new features with isolated database branches.
+The application is a modern, responsive product management system featuring a public product catalog, a shopping cart, and a password-protected admin dashboard for managing inventory.
 
 ![GuepardStore Demo App Screenshot](/readme/home.png)
 
-## 🚀 What You'll Learn
+## 🎯 What is Guepard?
 
-This demo shows you how to:
-- **Branch your database** like git branches for feature development
-- **Switch between app versions** using Guepard's database branches
-- **Apply feature patches** that modify both code and database schema
-- **Rollback changes** safely without data loss
-- **Use the Demo Control Panel** to manage database connections and features
+**Guepard** is a revolutionary Platform-as-a-Service (PaaS) that brings Git-like version control to your databases. Just like Git revolutionized code management, Guepard transforms how you handle database changes, deployments, and collaboration.
 
-## 🏗️ Tech Stack
+### 🌟 Key Features
 
-This project is a monorepo containing two separate applications:
+- **🔄 Database Branching**: Create isolated database branches for features, experiments, and testing
+- **📸 Snapshots**: Capture database states at any point in time
+- **⏰ Time Travel**: Roll back to any previous database state instantly
+- **🚀 Zero-Downtime Deployments**: Deploy database changes without service interruption
+- **👥 Team Collaboration**: Multiple developers can work on database changes simultaneously
+- **🔒 Data Safety**: Never lose data with automatic backups and version history
 
-**Frontend** (`components/frontend/`):
-- **Framework**: React + Vite + TypeScript
-- **Styling**: Tailwind CSS & shadcn/ui components
-- **State Management**: React Query + React Context
-- **Routing**: React Router
+## 🛠️ Installing Guepard CLI
 
-**Backend** (`components/api/`):
-- **Runtime**: Bun/Node.js
-- **Framework**: Express.js + TypeScript
-- **Database ORM**: Prisma
-- **Database**: PostgreSQL (via Guepard PaaS)
+The Guepard CLI is your gateway to managing databases with Git-like workflows. Here's how to install it:
 
-## 📁 Project Structure
-
-```
-/
-├── components/
-│   ├── api/           # Backend API with Prisma
-│   └── frontend/      # React frontend application
-├── demo/
-│   └── discount-feature/  # Feature patch system
-├── readme/            # Screenshots and assets
-└── README.md
-```
-
-## 🛠️ Prerequisites
-
-Before you begin, ensure you have:
-
-- [Node.js](https://nodejs.org/) (v18 or later)
-- [Bun](https://bun.sh/) (package manager and runtime)
-- [Guepard Account](https://www.guepard.run/) (for database hosting)
-- Git (for branch management)
-
-## 🚀 Initial Setup
-
-### Step 1: Clone and Install Dependencies
+### **Option 1: Using Homebrew (Recommended)**
 
 ```bash
-# Clone the repository
-git clone <your-repo-url>
-cd demo-app-guepard
+# Add Guepard tap
+brew tap guepard-corp/guepard
 
-# Install backend dependencies
-cd components/api
-bun install
+# Install Guepard CLI
+brew install guepard
 
-# Install frontend dependencies
-cd ../frontend
-bun install
+# Verify installation
+guepard --version
 ```
 
-### Step 2: Configure Environment Variables
+## 🔐 Authenticating with Guepard
 
-**Backend Configuration** (`components/api/.env`):
-```bash
-# Copy the example file
-cp .env.example .env
-
-# Edit .env with your Guepard database URLs
-DATABASE_URL="postgresql://username:password@your-guepard-host:5432/your-db"
-SHADOW_DATABASE_URL="postgresql://username:password@your-guepard-host:5432/your-db_shadow"
-PORT=3001
-HOST=0.0.0.0
-NODE_ENV=development
-FRONTEND_URL=http://localhost:8080
-```
-
-**Frontend Configuration** (`components/frontend/.env`):
-```bash
-# Copy the example file
-cp .env.example .env
-
-# Edit .env (usually no changes needed)
-VITE_API_BASE_URL=http://localhost:3001/api
-VITE_APP_NAME=GuepardStore Demo
-VITE_APP_VERSION=1.0.0
-VITE_PORT=8080
-VITE_HOST=::
-```
-
-### Step 3: Database Setup
+Before using Guepard CLI, you need to authenticate with your Guepard account:
 
 ```bash
-# Navigate to backend directory
-cd components/api
-
-# Run initial migration
-bunx prisma migrate dev --name "initial-schema"
-
-# Seed the database with sample data
-bunx prisma db seed
-```
-
-### Step 4: Start the Applications
-
-**Terminal 1 - Backend:**
-```bash
-cd components/api
-bun run dev
-```
-
-**Terminal 2 - Frontend:**
-```bash
-cd components/frontend
-bun run dev
-```
-
-Your application should now be running at:
-- **Frontend**: http://localhost:8080
-- **Backend API**: http://localhost:3001
-
-## 🐳 Docker Setup (Alternative)
-
-> **⚠️ Note**: Docker setup may have limitations with Guepard's git-like features. For the best demo experience, we recommend running the application natively (see setup instructions above).
-
-If you prefer to use Docker, you have **two options**:
-
-### **Option A: Separate Containers (Modular)**
-```bash
-# Development mode (with Guepard database)
-docker-compose -f docker-compose.dev.yml up --build
-
-# Switch between versions using Git branches
-git checkout discout-feature  # Enable discount feature
-git checkout main             # Back to main version
-```
-
-### **Option B: Single Container (Feature Patches Work)**
-```bash
-# Single container with both frontend and backend
-docker-compose -f docker-compose.single.yml up --build
-
-# Now feature patches work! Use Demo Control Panel or scripts
-```
-
-**Access Points:**
-- Frontend: http://localhost:8080
-- Backend API: http://localhost:3001
-
-For detailed Docker instructions, see [DOCKER.md](./DOCKER.md).
-
-## 🎯 Testing Guepard's Git-Like Features
-
-### Prerequisites: Install Guepard CLI
-
-Before testing Guepard's features, you need to install and authenticate with the Guepard CLI:
-
-```bash
-# Install Guepard CLI (requires Rust)
-git clone https://github.com/Guepard-Corp/guepard-cli
-cd guepard-cli
-cargo build --release
-
-# Add to your PATH
-sudo cp target/release/guepard /usr/local/bin/
-
-# Authenticate with your Guepard account
+# Interactive authentication (recommended)
 guepard login
 ```
 
-**Follow the interactive login process:**
+**Follow these steps:**
 1. Run `guepard login`
 2. Open the provided URL in your browser
 3. Complete authentication in the browser
 4. Enter the verification code in the terminal
 
-## 🐆 Essential Guepard CLI Commands
+```bash
+# Direct token authentication (for CI/CD)
+guepard login --code your-access-token-here
+```
 
-### Database Branch Management
+## 🚀 Getting Started with Guepard
+
+### **Step 1: Create Your First Deployment**
+
+```bash
+# Interactive deployment setup
+guepard deploy --interactive
+```
+
+This will guide you through:
+- Choosing your database provider (PostgreSQL, MySQL, MongoDB)
+- Selecting your region and cloud provider
+- Setting up your repository name
+- Configuring your database password
+
+### **Step 2: Explore Your Deployment**
 
 ```bash
 # List all your deployments
 guepard list deployments
 
-# List branches for a deployment
+# View deployment details
+guepard deploy --deployment-id YOUR_DEPLOYMENT_ID
+```
+
+### **Step 3: Create Your First Branch**
+
+```bash
+# List available branches
 guepard branch --deployment-id YOUR_DEPLOYMENT_ID
 
-# Create a new branch
+# Create a new feature branch
 guepard branch \
   --deployment-id YOUR_DEPLOYMENT_ID \
   --snapshot-id YOUR_SNAPSHOT_ID \
-  --name feature-name \
+  --name my-feature \
   --checkout \
   --ephemeral
+```
 
-# Switch between branches
+## 🎯 GuepardStore Demo: See Guepard in Action
+
+The GuepardStore Demo App is the perfect way to experience Guepard's capabilities. This e-commerce application demonstrates real-world scenarios where database versioning makes a difference.
+
+### **What You'll Learn**
+
+- **Database Branching**: Create feature branches for new functionality
+- **Schema Evolution**: Add new columns and tables safely
+- **Data Migration**: Move data between database versions
+- **Time Travel**: Roll back to previous states
+- **Team Collaboration**: Multiple developers working on database changes
+
+### **Demo Scenarios**
+
+1. **Feature Development**: Add a discount system to your e-commerce app
+2. **A/B Testing**: Test different database schemas simultaneously
+3. **Rollback Scenarios**: Quickly revert problematic changes
+4. **Data Recovery**: Restore data from any point in time
+
+## 🐆 Essential Guepard CLI Commands
+
+### **Database Management**
+
+```bash
+# List deployments
+guepard list deployments
+
+# Create new deployment
+guepard deploy --interactive
+
+# View deployment details
+guepard deploy --deployment-id DEPLOYMENT_ID
+```
+
+### **Branching and Versioning**
+
+```bash
+# List branches
+guepard branch --deployment-id DEPLOYMENT_ID
+
+# Create new branch
+guepard branch \
+  --deployment-id DEPLOYMENT_ID \
+  --snapshot-id SNAPSHOT_ID \
+  --name branch-name \
+  --checkout
+
+# Switch branches
 guepard checkout \
-  --deployment-id YOUR_DEPLOYMENT_ID \
-  --branch-id BRANCH_ID
-
-# Create snapshots (commits)
-guepard commit \
-  --message "Add discount feature" \
-  --deployment-id YOUR_DEPLOYMENT_ID \
+  --deployment-id DEPLOYMENT_ID \
   --branch-id BRANCH_ID
 ```
 
-### Monitoring and Logs
+### **Snapshots and Time Travel**
+
+```bash
+# Create snapshot
+guepard commit \
+  --message "Add user authentication" \
+  --deployment-id DEPLOYMENT_ID \
+  --branch-id BRANCH_ID
+
+# List commits/snapshots
+guepard list commits --deployment-id DEPLOYMENT_ID --graph
+
+# Time travel to snapshot
+guepard checkout \
+  --deployment-id DEPLOYMENT_ID \
+  --snapshot-id SNAPSHOT_ID
+```
+
+### **Monitoring and Logs**
 
 ```bash
 # View deployment logs
-guepard log --deployment-id YOUR_DEPLOYMENT_ID --follow
+guepard log --deployment-id DEPLOYMENT_ID --follow
 
 # Check compute status
-guepard compute status --deployment-id YOUR_DEPLOYMENT_ID
+guepard compute status --deployment-id DEPLOYMENT_ID
 
 # View usage and quotas
 guepard usage
 ```
 
-### Getting Help
+## 🎬 Running the GuepardStore Demo
 
-```bash
-# Get help for any command
-guepard --help
-guepard branch --help
-guepard checkout --help
+### **Quick Start**
 
-# Show current configuration
-guepard config --show
-```
+1. **Clone the repository**:
+   ```bash
+   git clone https://github.com/your-org/guepardstore-demo
+   cd guepardstore-demo
+   ```
 
-### Method 1: Using the Demo Control Panel (Recommended)
+2. **Set up your Guepard deployment**:
+   ```bash
+   guepard deploy --interactive
+   ```
+
+3. **Configure the application**:
+   ```bash
+   # Copy environment files
+   cp components/api/.env.example components/api/.env
+   cp components/frontend/.env.example components/frontend/.env
+   
+   # Add your Guepard database URL to components/api/.env
+   ```
+
+4. **Install dependencies and start**:
+   ```bash
+   # Install dependencies
+   cd components/api && bun install && cd ../..
+   cd components/frontend && bun install && cd ../..
+   
+   # Start the application
+   cd components/api && bun run dev &
+   cd components/frontend && bun run dev &
+   ```
+
+5. **Access the demo**:
+   - Frontend: http://localhost:8080
+   - Backend API: http://localhost:3001
+
+### **Demo Workflow**
+
+#### **Method 1: Using the Demo Control Panel (Recommended)**
 
 The app includes a **Demo Control Panel** that provides a UI to manage database connections and feature patches.
 
@@ -257,109 +236,14 @@ The app includes a **Demo Control Panel** that provides a UI to manage database 
    - **Option B**: Use Guepard Dashboard: Switch to the `discout-feature` branch in your browser
 5. **Restart Backend**: Stop and restart your backend server to apply changes
 
-### Method 2A: Using Feature Patch Scripts + Database Branch Management
-
-This method uses automated scripts to apply/revert code changes while you manage database branches using either the CLI or dashboard.
-
-#### Applying the Discount Feature
-
-1. **Apply the code patch**:
-   ```bash
-   # From project root
-   ./demo/discount-feature/apply-discount-feature.sh
-   ```
-
-2. **Create and switch to feature branch** (choose one option):
-   
-   **Option A: Using Guepard CLI**:
-   ```bash
-   # List your deployments to get the deployment ID
-   guepard list deployments
-   
-   # Create a new branch for the discount feature
-   guepard branch \
-     --deployment-id YOUR_DEPLOYMENT_ID \
-     --snapshot-id YOUR_SNAPSHOT_ID \
-     --name discout-feature \
-     --checkout \
-     --ephemeral
-   ```
-   
-   **Option B: Using Guepard Dashboard**:
-   - Go to your Guepard dashboard
-   - Create a new branch called `discout-feature`
-   - Switch to the new branch
-
-3. **Update backend**:
-   ```bash
-   cd components/api
-   # Stop the server (Ctrl+C)
-   bunx prisma db push
-   # Restart the server
-   bun run dev
-   ```
-
-4. **Restart frontend**:
-   ```bash
-   cd components/frontend
-   # Stop the server (Ctrl+C)
-   bun run dev
-   ```
-
-5. **Verify the change**: Product cards should now show discounted prices with strikethrough original prices.
-
-#### Rolling Back the Discount Feature
-
-1. **Revert the code patch**:
-   ```bash
-   # From project root
-   ./demo/discount-feature/rollback-discount-feature.sh
-   ```
-
-2. **Switch back to main branch** (choose one option):
-   
-   **Option A: Using Guepard CLI**:
-   ```bash
-   # List branches to see available options
-   guepard branch --deployment-id YOUR_DEPLOYMENT_ID
-   
-   # Checkout the main branch
-   guepard checkout \
-     --deployment-id YOUR_DEPLOYMENT_ID \
-     --branch-id MAIN_BRANCH_ID
-   ```
-   
-   **Option B: Using Guepard Dashboard**:
-   - Go to your Guepard dashboard
-   - Switch back to the `main` branch
-
-3. **Update backend**:
-   ```bash
-   cd components/api
-   # Stop the server (Ctrl+C)
-   bunx prisma db push
-   # Restart the server
-   bun run dev
-   ```
-
-4. **Restart frontend**:
-   ```bash
-   cd components/frontend
-   # Stop the server (Ctrl+C)
-   bun run dev
-   ```
-
-5. **Verify the rollback**: The app should be back to its original state without discounts.
-
-### Method 2B: Using Git Branch Checkout + Database Branch Management
+#### **Method 2: Using Git Branch Checkout + Database Branch Management**
 
 This method uses Git branches for code changes and either CLI or dashboard for database branch management.
 
-#### Applying the Discount Feature
+##### **Switching to Discount Feature**
 
-1. **Checkout the discount feature branch**:
+1. **Switch to discount feature Git branch**:
    ```bash
-   # From project root
    git checkout discout-feature
    ```
 
@@ -399,11 +283,10 @@ This method uses Git branches for code changes and either CLI or dashboard for d
 
 5. **Verify the change**: Product cards should now show discounted prices with strikethrough original prices.
 
-#### Rolling Back the Discount Feature
+##### **Switching Back to Main**
 
-1. **Checkout back to main branch**:
+1. **Switch back to main Git branch**:
    ```bash
-   # From project root
    git checkout main
    ```
 
@@ -439,87 +322,91 @@ This method uses Git branches for code changes and either CLI or dashboard for d
 
 5. **Verify the rollback**: The app should be back to its original state without discounts.
 
-## 🔄 Available Git Branches
+### **Complete Demo Workflow**
 
-The repository includes these branches for testing:
-
-- **`main`**: Base application without discount features
-- **`discout-feature`**: Database branch with discount schema and data
-
-## 🎮 Demo Control Panel Features
-
-The Demo Control Panel provides:
-
-- **Database Status**: Shows current database connection and feature patch status
-- **Connection Management**: Update backend .env with new Guepard database URLs
-- **Feature Management**: Apply/revert discount feature patches
-- **Database Actions**: Run seed scripts manually
-- **Auto-refresh**: Status updates every 15 seconds
-
-## 📊 Database Schema
-
-The application uses these main models:
-
-- **Category**: Product categories with name, slug, description
-- **Product**: Products with name, description, price, stock, image
-- **Order**: Customer orders with client info and total amount
-- **OrderItem**: Individual items within orders
-
-## 🛠️ Available Scripts
-
-**Backend** (`components/api/`):
+#### **Phase 1: Initial Setup**
 ```bash
-bun run dev              # Start development server
-bunx prisma migrate dev  # Create and apply migrations
-bunx prisma db seed      # Seed database with sample data
-bunx prisma studio       # Open Prisma Studio (database GUI)
-bunx prisma generate     # Generate Prisma client
+# Create initial snapshot
+guepard commit \
+  --message "Initial application state" \
+  --deployment-id YOUR_DEPLOYMENT_ID \
+  --branch-id YOUR_BRANCH_ID
 ```
 
-**Frontend** (`components/frontend/`):
+#### **Phase 2: Feature Development**
 ```bash
-bun run dev      # Start Vite development server
-bun run build    # Create production build
-bun run preview  # Preview production build
+# Create feature branch
+guepard branch \
+  --deployment-id YOUR_DEPLOYMENT_ID \
+  --snapshot-id YOUR_SNAPSHOT_ID \
+  --name discount-feature \
+  --checkout \
+  --ephemeral
+
+# Switch to feature code branch
+git checkout discout-feature
 ```
 
-## 🐛 Troubleshooting
+#### **Phase 3: Testing and Validation**
+```bash
+# Create snapshot with feature
+guepard commit \
+  --message "Added discount feature" \
+  --deployment-id YOUR_DEPLOYMENT_ID \
+  --branch-id YOUR_BRANCH_ID
+```
 
-**Database Connection Issues**:
-- Verify your Guepard database URLs are correct
-- Ensure your Guepard database is running
-- Check that the shadow database URL is properly configured
+#### **Phase 4: Time Travel Demo**
+```bash
+# Travel back to initial state
+guepard checkout \
+  --deployment-id YOUR_DEPLOYMENT_ID \
+  --snapshot-id INITIAL_SNAPSHOT_ID
 
-**Migration Issues**:
-- If migrations fail, try `bunx prisma generate` first
-- For existing branches, you may need to reset: `bunx prisma migrate reset`
+# See the difference!
+```
 
-**Feature Patch Issues**:
-- Ensure you have backup files (`.bak` files) before applying patches
-- If rollback fails, check that all backup files exist
-- Restart both servers after applying/rolling back patches
+#### **Phase 5: Rollback**
+```bash
+# Switch back to main branch
+guepard checkout \
+  --deployment-id YOUR_DEPLOYMENT_ID \
+  --branch-id MAIN_BRANCH_ID
 
-**Port Conflicts**:
-- Backend runs on port 3001 by default
-- Frontend runs on port 8080 by default
-- Change ports in `.env` files if needed
+# Switch back to main code branch
+git checkout main
+```
 
-## 🎯 Next Steps
 
-After completing this demo, you can:
+## 📚 Learn More
 
-1. **Explore Guepard's advanced features**: Time-travel, branching strategies, data isolation
-2. **Create your own feature branches**: Develop new features with isolated database states
-3. **Integrate with CI/CD**: Use Guepard's API to automate database branch management
-4. **Scale your application**: Leverage Guepard's managed PostgreSQL for production workloads
+- **Guepard Documentation**: [docs.guepard.run](https://docs.guepard.run)
+- **CLI Reference**: [CLI Commands](https://docs.guepard.run/cli-commands)
+- **API Documentation**: [API Reference](https://docs.guepard.run/api)
+- **Community**: [Discord](https://discord.gg/guepard)
 
-## 📚 Additional Resources
+## 🛠️ Application Details
 
-- [Guepard Documentation](https://docs.guepard.run/)
-- [Prisma Documentation](https://www.prisma.io/docs)
-- [React + Vite Guide](https://vitejs.dev/guide/)
-- [Tailwind CSS](https://tailwindcss.com/docs)
+For detailed information about the GuepardStore application itself, including:
+- Technical architecture
+- Setup instructions
+- API documentation
+- Docker deployment
+- Troubleshooting
+
+See: [APPLICATION_README.md](./APPLICATION_README.md)
 
 ## 🤝 Contributing
 
-This is a demo application. Feel free to fork and experiment with different features and Guepard capabilities!
+We welcome contributions! Please see our [Contributing Guide](CONTRIBUTING.md) for details.
+
+## 📞 Support
+
+- **Documentation**: [docs.guepard.run](https://docs.guepard.run)
+- **Community**: [Discord](https://discord.gg/guepard)
+- **Issues**: [GitHub Issues](https://github.com/Guepard-Corp/guepard-cli/issues)
+- **Email**: support@guepard.run
+
+---
+
+**🐆 Start your Git-like database journey with Guepard today!**
