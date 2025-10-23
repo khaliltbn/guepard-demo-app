@@ -1,0 +1,28 @@
+{
+  "name": "api",
+  "module": "src/index.ts",
+  "private": true,
+  "devDependencies": {
+    "@types/bun": "latest",
+    "@types/cors": "^2.8.19",
+    "@types/express": "^5.0.3",
+    "@types/node": "^24.8.1",
+    "prisma": "^6.17.1",
+    "ts-node-dev": "^2.0.0"
+  },
+  "peerDependencies": {
+    "typescript": "^5"
+  },
+  "scripts": {
+    "dev": "bunx prisma generate && bun run --hot src/index.ts",
+    "start": "bunx prisma generate && bun src/index.ts"
+  },
+  "dependencies": {
+    "@prisma/client": "^6.17.1",
+    "cors": "^2.8.5",
+    "express": "^5.1.0"
+  },
+  "prisma": {
+    "seed": "bun run prisma/seed.ts"
+  }
+}

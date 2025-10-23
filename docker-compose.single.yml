@@ -1,0 +1,31 @@
+version: '3.8'
+
+services:
+  # Single Container with Frontend + Backend (Feature Patches Work)
+  guepard-app:
+    build:
+      context: .
+      dockerfile: Dockerfile.single
+    ports:
+      - "3001:3001"  # Backend API
+      - "8080:8080"  # Frontend
+    environment:
+      - NODE_ENV=development
+      - PORT=3001
+      - HOST=0.0.0.0
+      - VITE_API_BASE_URL=http://localhost:3001/api
+      - VITE_APP_NAME=GuepardStore Demo
+      - VITE_APP_VERSION=1.0.0
+    env_file:
+      - ./components/api/.env
+    volumes:
+      - ./components/api/src:/app/api/src
+      - ./components/frontend/src:/app/frontend/src
+      - ./demo:/app/demo
+    networks:
+      - guepard-network
+    restart: unless-stopped
+
+networks:
+  guepard-network:
+    driver: bridge
