@@ -21,62 +21,45 @@ jobs:
       - name: Create Dockerfile for Runner
         run: |
           cat <<EOF > Dockerfile.runner
-          # Start with Ubuntu base
           FROM ubuntu:24.04
-
-          # Prevent interactive prompts during installs
+          # Install prerequisites
           ENV DEBIAN_FRONTEND=noninteractive
-
-          # Install prerequisites for Bun, Homebrew, Git, psql
-          RUN apt-get update && apt-get install -y --no-install-recommends \
-              build-essential procps curl file git ca-certificates postgresql-client sudo \
-              unzip # Bun dependency
+          RUN apt-get update && apt-get install -y build-essential procps curl file git ca-certificates postgresql-client sudo unzip
 
           # Install Bun
           RUN curl -fsSL https://bun.sh/install | bash
-          # Add Bun to global PATH for all users
           ENV PATH="/root/.bun/bin:${PATH}"
 
-          # Create linuxbrew user, grant sudo, install Homebrew
+          # Create user and install Homebrew
           RUN useradd -ms /bin/bash linuxbrew && echo "linuxbrew ALL=(ALL) NOPASSWD: ALL" >> /etc/sudoers
           USER linuxbrew
           WORKDIR /home/linuxbrew
           RUN /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
-          # Add Homebrew to PATH for linuxbrew user (and potentially root later)
           ENV PATH="/home/linuxbrew/.linuxbrew/bin:/home/linuxbrew/.linuxbrew/sbin:${PATH}"
 
-          # Install Guepard CLI via Homebrew
+          # Install Guepard CLI
           RUN brew tap guepard-corp/guepard && brew install guepard
 
           # --- Optional: Pre-install Node Modules ---
-          # Switch back to root to copy files and manage directories
           USER root
           WORKDIR /app # Set a working directory for app code
-
-          # Copy backend files and install dependencies
           COPY --chown=bun:bun ./components/api /app/components/api
           WORKDIR /app/components/api
-          # Switch to bun user to run install as non-root
-          USER bun
+          USER bun # Switch to bun user
           RUN bun install --frozen-lockfile
-          # Generate Prisma Client (good practice)
-          RUN bunx prisma generate
-          USER root # Switch back to root if needed
+          RUN bunx prisma generate # Generate prisma client
+          USER root # Switch back
 
-          # Copy frontend files and install dependencies
           WORKDIR /app
           COPY --chown=bun:bun ./components/frontend /app/components/frontend
           WORKDIR /app/components/frontend
-          USER bun
+          USER bun # Switch to bun user
           RUN bun install --frozen-lockfile
-          # Build frontend (if needed for E2E tests later)
-          # RUN bun run build
           # --- End Optional Node Modules ---
 
           # Set default workdir and user for subsequent jobs
           USER root
           WORKDIR /app
-          # Create session dir for Guepard login persistence
           RUN mkdir -p /home/linuxbrew/.guepard && chown -R linuxbrew:linuxbrew /home/linuxbrew/.guepard
 
           # Default user for container runs
