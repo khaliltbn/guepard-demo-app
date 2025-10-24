@@ -27,12 +27,12 @@ jobs:
             ${{ runner.os }}-bun-
 
       # Add steps here to install Guepard CLI & postgresql-client if using psql
-      - name: Install Guepard CLI
+      - name: Install Guepard CLI on Linux
         run: |
           echo "Installing Guepard CLI..."
-          brew tap guepard-corp/guepard
-          brew install guepard
-          echo "guepard-cli installed successfully"
+          # Replace this with the actual Linux install command from Guepard docs
+          curl -fsSL https://install.guepard.run/script.sh | bash
+          echo "Guepard CLI installed successfully"
           
       - name: Login to Guepard
         run: |
