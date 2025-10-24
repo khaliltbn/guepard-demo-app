@@ -21,17 +21,10 @@ jobs:
       - name: Create Dockerfile for Runner
         run: |
           cat <<EOF > Dockerfile.runner
-          # ===========================
-          # Base image
-          # ===========================
           FROM ubuntu:24.04
-          
-          # Prevent interactive prompts
+
           ENV DEBIAN_FRONTEND=noninteractive
           
-          # ===========================
-          # Install system dependencies
-          # ===========================
           RUN apt-get update && apt-get install -y \
               build-essential \
               procps \
@@ -41,64 +34,31 @@ jobs:
               ca-certificates \
               postgresql-client \
               sudo \
-              unzip \
-              && rm -rf /var/lib/apt/lists/*
+              unzip
           
-          # ===========================
-          # Install Bun (JS runtime)
-          # ===========================
+          # Create a non-root user for Homebrew
+          RUN useradd -ms /bin/bash linuxbrew && echo "linuxbrew ALL=(ALL) NOPASSWD: ALL" >> /etc/sudoers
+          
+          # Install Homebrew as linuxbrew
+          USER linuxbrew
+          WORKDIR /home/linuxbrew
+          RUN /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+          ENV PATH="/home/linuxbrew/.linuxbrew/bin:/home/linuxbrew/.linuxbrew/sbin:${PATH}"
+          
+          # Install Guepard
+          RUN brew tap guepard-corp/guepard && brew install guepard
+          
+          # Switch back to root for app setup
+          USER root
           RUN curl -fsSL https://bun.sh/install | bash
           ENV PATH="/root/.bun/bin:${PATH}"
           
-          # ===========================
-          # Install Homebrew & Guepard CLI
-          # ===========================
-          # Install Homebrew as root (non-interactive)
-          RUN /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)" \
-              && echo 'eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"' >> /root/.bashrc
-          
-          # Add Homebrew to PATH
-          ENV PATH="/home/linuxbrew/.linuxbrew/bin:/home/linuxbrew/.linuxbrew/sbin:${PATH}"
-          
-          # Install Guepard CLI
-          RUN brew tap guepard-corp/guepard && brew install guepard
-          
-          # ===========================
-          # Setup Bun projects
-          # ===========================
+          # Continue with your Bun + Prisma setup...
           WORKDIR /app
-          
-          # --- Backend (API) ---
           COPY ./components/api /app/components/api
           WORKDIR /app/components/api
-          
-          # Install dependencies and generate Prisma client
-          RUN bun install --frozen-lockfile
-          RUN bunx prisma generate
-          
-          # --- Frontend ---
-          WORKDIR /app
-          COPY ./components/frontend /app/components/frontend
-          WORKDIR /app/components/frontend
-          
-          # Install dependencies
-          RUN bun install --frozen-lockfile
-          
-          # ===========================
-          # Final setup
-          # ===========================
-          WORKDIR /app
-          
-          # Create Guepard session directory (used by CLI)
-          RUN mkdir -p /root/.guepard
-          
-          # Default user can stay root, or switch later if you prefer
-          # USER root
-          
-          # ===========================
-          # Default command
-          # ===========================
-          CMD ["/bin/bash"]
+          RUN bun install --frozen-lockfile && bunx prisma generate
+
 
           EOF
 
