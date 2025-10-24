@@ -29,10 +29,27 @@ jobs:
       # Add steps here to install Guepard CLI & postgresql-client if using psql
       - name: Install Guepard CLI on Linux
         run: |
-          echo "Installing Guepard CLI..."
-          # Replace this with the actual Linux install command from Guepard docs
-          curl -fsSL https://install.guepard.run/script.sh | bash
-          echo "Guepard CLI installed successfully"
+          sudo apt-get update
+          sudo apt-get install -y build-essential procps curl file git
+
+          # 2. Install Homebrew non-interactively
+          echo "Installing Homebrew..."
+          /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+
+          echo "Adding Homebrew to PATH..."
+          echo '/home/linuxbrew/.linuxbrew/bin:/home/linuxbrew/.linuxbrew/sbin' >> $GITHUB_PATH
+          # The following might be needed depending on the specific brew setup or packages
+          # echo 'eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"' >> $GITHUB_ENV
+
+          which brew
+          brew --version
+
+          echo "Installing Guepard CLI via Homebrew..."
+          brew tap guepard-corp/guepard
+          brew install guepard
+
+          which guepard
+          guepard --version
           
       - name: Login to Guepard
         run: |
