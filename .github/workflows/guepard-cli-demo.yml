@@ -20,7 +20,7 @@ jobs:
 
       - name: Create Dockerfile for Runner
         run: |
-          cat <<EOF > Dockerfile.runner
+          cat <<'EOF' > Dockerfile.runner
           FROM ubuntu:24.04
 
           ENV DEBIAN_FRONTEND=noninteractive
