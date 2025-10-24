@@ -21,49 +21,85 @@ jobs:
       - name: Create Dockerfile for Runner
         run: |
           cat <<EOF > Dockerfile.runner
+          # ===========================
+          # Base image
+          # ===========================
           FROM ubuntu:24.04
-          # Install prerequisites
+          
+          # Prevent interactive prompts
           ENV DEBIAN_FRONTEND=noninteractive
-          RUN apt-get update && apt-get install -y build-essential procps curl file git ca-certificates postgresql-client sudo unzip
-
-          # Install Bun
+          
+          # ===========================
+          # Install system dependencies
+          # ===========================
+          RUN apt-get update && apt-get install -y \
+              build-essential \
+              procps \
+              curl \
+              file \
+              git \
+              ca-certificates \
+              postgresql-client \
+              sudo \
+              unzip \
+              && rm -rf /var/lib/apt/lists/*
+          
+          # ===========================
+          # Install Bun (JS runtime)
+          # ===========================
           RUN curl -fsSL https://bun.sh/install | bash
           ENV PATH="/root/.bun/bin:${PATH}"
-
-          # Create user and install Homebrew
-          RUN useradd -ms /bin/bash linuxbrew && echo "linuxbrew ALL=(ALL) NOPASSWD: ALL" >> /etc/sudoers
-          USER linuxbrew
-          WORKDIR /home/linuxbrew
-          RUN /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+          
+          # ===========================
+          # Install Homebrew & Guepard CLI
+          # ===========================
+          # Install Homebrew as root (non-interactive)
+          RUN /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)" \
+              && echo 'eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"' >> /root/.bashrc
+          
+          # Add Homebrew to PATH
           ENV PATH="/home/linuxbrew/.linuxbrew/bin:/home/linuxbrew/.linuxbrew/sbin:${PATH}"
-
+          
           # Install Guepard CLI
           RUN brew tap guepard-corp/guepard && brew install guepard
-
-          # --- Optional: Pre-install Node Modules ---
-          USER root
-          WORKDIR /app # Set a working directory for app code
-          COPY --chown=bun:bun ./components/api /app/components/api
+          
+          # ===========================
+          # Setup Bun projects
+          # ===========================
+          WORKDIR /app
+          
+          # --- Backend (API) ---
+          COPY ./components/api /app/components/api
           WORKDIR /app/components/api
-          USER bun # Switch to bun user
+          
+          # Install dependencies and generate Prisma client
           RUN bun install --frozen-lockfile
-          RUN bunx prisma generate # Generate prisma client
-          USER root # Switch back
-
+          RUN bunx prisma generate
+          
+          # --- Frontend ---
           WORKDIR /app
-          COPY --chown=bun:bun ./components/frontend /app/components/frontend
+          COPY ./components/frontend /app/components/frontend
           WORKDIR /app/components/frontend
-          USER bun # Switch to bun user
+          
+          # Install dependencies
           RUN bun install --frozen-lockfile
-          # --- End Optional Node Modules ---
-
-          # Set default workdir and user for subsequent jobs
-          USER root
+          
+          # ===========================
+          # Final setup
+          # ===========================
           WORKDIR /app
-          RUN mkdir -p /home/linuxbrew/.guepard && chown -R linuxbrew:linuxbrew /home/linuxbrew/.guepard
+          
+          # Create Guepard session directory (used by CLI)
+          RUN mkdir -p /root/.guepard
+          
+          # Default user can stay root, or switch later if you prefer
+          # USER root
+          
+          # ===========================
+          # Default command
+          # ===========================
+          CMD ["/bin/bash"]
 
-          # Default user for container runs
-          USER bun
           EOF
 
       - name: Normalize repository owner name # Use owner instead of full repo
