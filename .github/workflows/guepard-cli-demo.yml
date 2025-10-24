@@ -1,0 +1,187 @@
+name: Guepard CLI Demo Scenarios
+
+on:
+  workflow_dispatch: # Allow manual triggering
+
+jobs:
+  install-deps:
+    name: Install Dependencies & Setup
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up Bun
+        uses: oven-sh/setup-bun@v1
+
+      - name: Install Backend Dependencies
+        working-directory: ./components/api
+        run: bun install --frozen-lockfile
+
+      - name: Cache Bun Dependencies
+        uses: actions/cache@v4
+        with:
+          path: ~/.bun/install/cache
+          key: ${{ runner.os }}-bun-${{ hashFiles('**/bun.lockb') }}
+          restore-keys: |
+            ${{ runner.os }}-bun-
+
+      # Add steps here to install Guepard CLI & postgresql-client if using psql
+      - name: Install Guepard CLI
+        run: |
+          echo "Installing Guepard CLI..."
+          brew tap guepard-corp/guepard
+          brew install guepard
+          echo "guepard-cli installed successfully"
+          
+      - name: Login to Guepard
+        run: |
+          echo "Logging into Guepard..."
+          guepard login --code ${{ secrets.GUEPARD_API_KEY }}
+          echo "Successfully logged into Guepard"
+          
+      - name: Install psql client
+        run: sudo apt-get update && sudo apt-get install -y postgresql-client
+
+  safe-feature-development-cli:
+    name: Scenario 1 (CLI) - Safe Feature Development
+    runs-on: ubuntu-latest
+    needs: install-deps
+    env:
+      DATABASE_URL: ${{ secrets.GUEPARD_DB_URL }}
+      SHADOW_DATABASE_URL: ${{ secrets.GUEPARD_SHADOW_DB_URL }}
+      # GUEPARD_API_KEY: ${{ secrets.GUEPARD_API_KEY }} # If needed
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+        
+      - name: Set up Bun
+        uses: oven-sh/setup-bun@v1
+        
+      - name: Restore Backend Dependencies
+        uses: actions/cache@v4
+        with:
+          path: ~/.bun/install/cache
+          key: ${{ runner.os }}-bun-${{ hashFiles('**/bun.lockb') }}
+          restore-keys: |
+            ${{ runner.os }}-bun-
+            
+      - name: Install Backend Dependencies if Cache Miss
+        working-directory: ./components/api
+        run: bun install --frozen-lockfile
+        
+      - name: 1. Ensure Main Branch is Clean & Baseline
+        working-directory: ./components/api
+        run: |
+          echo "Ensuring 'main' branch is active and schema is baseline..."
+          # gp branch switch main # Ensure connected to main
+          echo "Baselining main database if needed..."
+          # Check if _prisma_migrations exists, if not, create baseline
+          # if ! PGPASSWORD=... psql -h ... -c "\dt _prisma_migrations" | grep -q '_prisma_migrations'; then
+          #   bunx prisma migrate dev --name baseline --create-only
+          #   BASELINE_ID=$(ls -t prisma/migrations | grep 'baseline' | head -n 1)
+          #   bunx prisma migrate resolve --applied $BASELINE_ID
+          # fi
+          echo "Applying any pending migrations to main..."
+          bunx prisma migrate deploy
+
+      - name: 2. Create Feature Branch in Guepard
+        run: |
+          echo "Creating Guepard branch 'feature-discounts-cli'..."
+          # gp branch create feature-discounts-cli --from main
+          sleep 5
+
+      - name: 3. Apply Code Patch Locally
+        run: |
+          echo "Applying 'discount-feature' file patch..."
+          chmod +x ./demo/demo-manager.sh
+          ./demo/demo-manager.sh apply discount-feature
+
+      - name: 4. Resolve Baseline & Apply Migration to Feature Branch
+        working-directory: ./components/api
+        run: |
+          echo "Applying migrations to 'feature-discounts-cli' branch..."
+          # Get baseline migration ID (replace with actual logic)
+          BASELINE_MIGRATION_ID=$(ls -t prisma/migrations | grep 'baseline' | head -n 1) # Example
+          echo "Resolving baseline migration: $BASELINE_MIGRATION_ID for feature branch"
+          bunx prisma migrate resolve --applied $BASELINE_MIGRATION_ID
+          echo "Deploying subsequent migrations..."
+          bunx prisma migrate deploy
+
+      - name: 5. Verify Schema Change via CLI (Optional)
+        run: |
+          echo "Verifying 'discount_price' column exists on feature branch..."
+          # gp query "SELECT column_name FROM information_schema.columns WHERE table_name='products' AND column_name='discount_price';" --branch feature-discounts-cli
+          # OR using psql:
+          # PGPASSWORD=... psql -h ... -c "\d products" | grep discount_price
+
+      - name: 6. Cleanup
+        if: always()
+        run: |
+          echo "Cleaning up..."
+          # gp branch switch main # Switch active back if needed
+          # gp branch delete feature-discounts-cli -f
+
+  data-time-travel-cli:
+    name: Scenario 2 (CLI) - Data Time Travel
+    runs-on: ubuntu-latest
+    needs: install-deps
+    env:
+      DATABASE_URL: ${{ secrets.GUEPARD_DB_URL }}
+      # GUEPARD_API_KEY: ${{ secrets.GUEPARD_API_KEY }}
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+        
+      - name: Set up Bun
+        uses: oven-sh/setup-bun@v1
+        
+      - name: Restore Backend Dependencies
+        uses: actions/cache@v4
+        with:
+          path: ~/.bun/install/cache
+          key: ${{ runner.os }}-bun-${{ hashFiles('**/bun.lockb') }}
+          restore-keys: |
+            ${{ runner.os }}-bun-
+            
+      - name: Install Backend Dependencies if Cache Miss
+        working-directory: ./components/api
+        run: bun install --frozen-lockfile
+        
+      - name: 1. Ensure Main Branch and Seed Data
+        working-directory: ./components/api
+        run: |
+          echo "Ensuring 'main' branch is active and seeding data..."
+          # gp branch switch main
+          # Reset and seed for a known state
+          bunx prisma migrate reset --force
+          bunx prisma db seed
+          echo "Checking for initial product..."
+          # COUNT=$(gp query "SELECT COUNT(*) FROM products WHERE name = 'Wireless Headphones';" --branch main ...)
+          # if [ "$COUNT" -ne 1 ]; then echo "Seed data not found!"; exit 1; fi
+
+      - name: 2. Simulate Data Deletion
+        run: |
+          echo "Deleting product..."
+          # gp query "DELETE FROM products WHERE name = 'Wireless Headphones';" --branch main
+          sleep 2 # Ensure deletion completes before verification
+
+      - name: 3. Verify Deletion
+        run: |
+          echo "Verifying product deletion..."
+          # COUNT=$(gp query "SELECT COUNT(*) FROM products WHERE name = 'Wireless Headphones';" --branch main ...)
+          # if [ "$COUNT" -ne 0 ]; then echo "Product deletion failed!"; exit 1; fi
+          echo "Product successfully deleted."
+
+      - name: 4. Perform Time Travel Revert
+        run: |
+          echo "Performing time travel revert (e.g., 1 minute ago)..."
+          # gp revert main --to "1 minute ago" # Replace with actual command
+          sleep 5 # Allow time for revert
+
+      - name: 5. Verify Restoration
+        run: |
+          echo "Verifying product restoration..."
+          # COUNT=$(gp query "SELECT COUNT(*) FROM products WHERE name = 'Wireless Headphones';" --branch main ...)
+          # if [ "$COUNT" -ne 1 ]; then echo "Product restoration failed!"; exit 1; fi
+          echo "Product successfully restored via time travel!"
