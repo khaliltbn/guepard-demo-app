@@ -26,88 +26,68 @@ jobs:
           # --- 1. Install System Prerequisites ---
           ENV DEBIAN_FRONTEND=noninteractive
           RUN apt-get update && apt-get install -y --no-install-recommends \
-              build-essential procps curl file git ca-certificates sudo \
-              unzip # Bun dependency
-
+              build-essential procps curl file git ca-certificates sudo unzip \
+           && rm -rf /var/lib/apt/lists/*
+          
           # --- 2. Install Bun Globally (as root) ---
-          RUN curl -fsSL https://bun.sh/install | bash
-          # Add Bun to global PATH for all users
-          ENV PATH="/root/.bun/bin:${PATH}"
-
+          RUN curl -fsSL https://bun.sh/install | bash && \
+              mv /root/.bun/bin/bun /usr/local/bin/bun && \
+              chmod +x /usr/local/bin/bun
+          
           # --- 3. Install Homebrew & Guepard CLI (as linuxbrew user) ---
-          # Create linuxbrew user, grant passwordless sudo for installation steps
           RUN useradd -ms /bin/bash linuxbrew && \
               echo "linuxbrew ALL=(ALL) NOPASSWD: ALL" >> /etc/sudoers.d/linuxbrew && \
               chmod 0440 /etc/sudoers.d/linuxbrew
-
-          # Switch to linuxbrew to install Homebrew
+          
           USER linuxbrew
           WORKDIR /home/linuxbrew
-
-          # Install Homebrew
           RUN /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
-
-          # Add Homebrew to PATH for linuxbrew user and subsequent RUN commands AS linuxbrew
           ENV PATH="/home/linuxbrew/.linuxbrew/bin:/home/linuxbrew/.linuxbrew/sbin:${PATH}"
-
-          # Install Guepard CLI using Homebrew
+          
           RUN brew tap guepard-corp/guepard && brew install guepard
-
-          # Create Guepard session directory (owned by linuxbrew)
           RUN mkdir -p /home/linuxbrew/.guepard
-
+          
           # --- 4. Create Application User ---
-          USER root # Switch back to root
+          USER root
+          RUN echo "root:x:0:0:root:/root:/bin/bash" >> /etc/passwd || true \
+           && echo "root:x:0:root" >> /etc/group || true
+          
           ARG APP_USER=appuser
           ARG APP_UID=1001
-          RUN groupadd --gid $APP_UID $APP_USER || true # Allow group to exist
-          RUN useradd --uid $APP_UID --gid $APP_USER --create-home --shell /bin/bash $APP_USER
-          # Optional: Grant specific sudo permissions if appuser needs them later,
-          # but avoid NOPASSWD: ALL for the app user if possible.
-
+          RUN set -eux; \
+              if ! getent group "$APP_USER" >/dev/null; then \
+                  groupadd --gid "$APP_UID" "$APP_USER"; \
+              fi; \
+              if ! id "$APP_USER" >/dev/null 2>&1; then \
+                  useradd --uid "$APP_UID" --gid "$APP_USER" --create-home --shell /bin/bash "$APP_USER"; \
+              fi
+          
           # --- 5. Install Application Dependencies (as appuser) ---
-          # Set main working directory and permissions
           WORKDIR /app
           RUN chown $APP_USER:$APP_USER /app
-
-          # Switch to the application user
+          
           USER $APP_USER
-          WORKDIR /app # Ensure WORKDIR is set for the app user
-
-          # Copy backend dependency files and install
+          WORKDIR /app
+          
+          # --- Backend Dependencies ---
           COPY --chown=$APP_USER:$APP_USER ./components/api/package.json ./components/api/bun.lockb* ./components/api/
           WORKDIR /app/components/api
-          # Ensure Bun (installed globally as root) is accessible via PATH
-          # If PATH isn't inherited correctly, add ENV PATH="/root/.bun/bin:${PATH}" again before USER appuser
           RUN bun install --frozen-lockfile
-
-          # Generate Prisma Client
           RUN bunx prisma generate
-
-          # Copy frontend dependency files and install
-          WORKDIR /app # Go back to root app dir before copying next part
+          
+          # --- Frontend Dependencies ---
+          WORKDIR /app
           COPY --chown=$APP_USER:$APP_USER ./components/frontend/package.json ./components/frontend/bun.lockb* ./components/frontend/
           WORKDIR /app/components/frontend
           RUN bun install --frozen-lockfile
-          # --- End Dependency Installation ---
-
+          
           # --- 6. Final Configuration ---
-          # Copy rest of the application code (will be owned by appuser)
-          # Note: This invalidates Docker cache more often, but ensures latest code is present
-          # Could be done AFTER checkout in the job instead if preferred.
           WORKDIR /app
           COPY --chown=$APP_USER:$APP_USER ./components /app/components
           COPY --chown=$APP_USER:$APP_USER ./demo /app/demo
-
-          # Set default workdir and user for container execution
+          
           WORKDIR /app
           USER $APP_USER
-
-          # Expose ports (optional, docker run/compose handles mapping)
-          # EXPOSE 3001 5173
-
-          # Default command if needed, but ENTRYPOINT/CMD usually comes from docker run/compose
-          # CMD ["sleep", "infinity"]
 
           EOF
 
