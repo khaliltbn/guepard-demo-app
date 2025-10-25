@@ -29,10 +29,11 @@ jobs:
               build-essential procps curl file git ca-certificates sudo unzip \
            && rm -rf /var/lib/apt/lists/*
           
-          # --- 2. Install Bun Globally (as root) ---
+          # --- 2. Install Bun Globally ---
           RUN curl -fsSL https://bun.sh/install | bash && \
-              mv /root/.bun/bin/bun /usr/local/bin/bun && \
-              mv /root/.bun/bin/bunx /usr/local/bin/bunx && \
+              cp -r /root/.bun /usr/local/lib/bun && \
+              ln -s /usr/local/lib/bun/bin/bun /usr/local/bin/bun && \
+              ln -s /usr/local/lib/bun/bin/bunx /usr/local/bin/bunx && \
               chmod +x /usr/local/bin/bun /usr/local/bin/bunx
           
           # --- 3. Install Homebrew & Guepard CLI (as linuxbrew user) ---
@@ -51,35 +52,27 @@ jobs:
           # --- 4. Create Application User ---
           USER root
           ARG APP_USER=appuser
-          
-          # Safely create group and user without forcing UID/GID
           RUN groupadd "$APP_USER" || true && \
               useradd --create-home --shell /bin/bash --gid "$APP_USER" "$APP_USER"
           
-          # --- 5. Install Application Dependencies (as appuser) ---
           WORKDIR /app
-          RUN chown $APP_USER:$APP_USER /app
+          RUN chown -R $APP_USER:$APP_USER /app
           
+          # --- 5. Copy Entire Project ---
           USER $APP_USER
-          WORKDIR /app
+          COPY --chown=$APP_USER:$APP_USER . /app
           
-          # --- Backend Dependencies ---
-          COPY --chown=$APP_USER:$APP_USER ./components/api/package.json ./components/api/bun.lockb* ./components/api/
+          # --- 6. Install Dependencies ---
+          # Backend
           WORKDIR /app/components/api
           RUN bun install --frozen-lockfile
-          RUN bunx prisma generate
+          RUN bun prisma generate
           
-          # --- Frontend Dependencies ---
-          WORKDIR /app
-          COPY --chown=$APP_USER:$APP_USER ./components/frontend/package.json ./components/frontend/bun.lockb* ./components/frontend/
+          # Frontend
           WORKDIR /app/components/frontend
           RUN bun install --frozen-lockfile
           
-          # --- 6. Final Configuration ---
-          WORKDIR /app
-          COPY --chown=$APP_USER:$APP_USER ./components /app/components
-          COPY --chown=$APP_USER:$APP_USER ./demo /app/demo
-          
+          # --- 7. Set Default Workdir and User ---
           WORKDIR /app
           USER $APP_USER
 
