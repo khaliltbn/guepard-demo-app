@@ -54,10 +54,17 @@ jobs:
           
           ARG APP_USER=appuser
           ARG APP_UID=1001
+          
+          # Safely create group & user, avoid GID conflicts
           RUN set -eux; \
-              if ! getent group "$APP_USER" >/dev/null; then \
+              # If a group with APP_UID exists, pick the name instead
+              if getent group "$APP_UID" >/dev/null; then \
+                  echo "GID $APP_UID exists, creating group '$APP_USER' without explicit GID"; \
+                  groupadd "$APP_USER"; \
+              else \
                   groupadd --gid "$APP_UID" "$APP_USER"; \
               fi; \
+              # Create user only if it doesn't exist
               if ! id "$APP_USER" >/dev/null 2>&1; then \
                   useradd --uid "$APP_UID" --gid "$APP_USER" --create-home --shell /bin/bash "$APP_USER"; \
               fi
