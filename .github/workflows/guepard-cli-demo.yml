@@ -68,6 +68,7 @@ jobs:
           COPY --chown=$APP_USER:$APP_USER ./components/api/package.json ./components/api/bun.lockb* ./components/api/
           WORKDIR /app/components/api
           RUN bun install --frozen-lockfile
+          USER appuser
           RUN bunx prisma generate
           
           # --- Frontend Dependencies ---
