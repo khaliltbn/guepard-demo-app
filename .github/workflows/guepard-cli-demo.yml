@@ -72,6 +72,7 @@ jobs:
           WORKDIR /app/components/frontend
           RUN bun install --frozen-lockfile
 
+          USER root
           RUN mkdir -p /github/_work /__w/_temp && \
               chown -R 1000:1000 /github /__w/_temp
           # --- 7. Set Default Workdir and User ---
