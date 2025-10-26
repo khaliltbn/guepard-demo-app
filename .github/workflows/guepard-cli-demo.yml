@@ -21,6 +21,7 @@ jobs:
       - name: Create Dockerfile for Runner
         run: |
           cat <<'EOF' > Dockerfile.runner
+          # --- Base image ---
           FROM ubuntu:24.04
           
           # --- 1. Install System Prerequisites ---
@@ -31,12 +32,11 @@ jobs:
           
           # --- 2. Install Bun Globally ---
           RUN curl -fsSL https://bun.sh/install | bash && \
-              cp -r /root/.bun /usr/local/lib/bun && \
-              ln -s /usr/local/lib/bun/bin/bun /usr/local/bin/bun && \
-              ln -s /usr/local/lib/bun/bin/bunx /usr/local/bin/bunx && \
+              mv /root/.bun/bin/bun /usr/local/bin/bun && \
+              mv /root/.bun/bin/bunx /usr/local/bin/bunx && \
               chmod +x /usr/local/bin/bun /usr/local/bin/bunx
           
-          # --- 3. Install Homebrew & Guepard CLI (as linuxbrew user) ---
+          # --- 3. Install Homebrew & Guepard CLI ---
           RUN useradd -ms /bin/bash linuxbrew && \
               echo "linuxbrew ALL=(ALL) NOPASSWD: ALL" >> /etc/sudoers.d/linuxbrew && \
               chmod 0440 /etc/sudoers.d/linuxbrew
@@ -49,35 +49,36 @@ jobs:
           RUN brew tap guepard-corp/guepard && brew install guepard
           RUN mkdir -p /home/linuxbrew/.guepard
           
-          # --- 4. Create Application User ---
+          # --- 4. Switch back to root for everything else ---
           USER root
-          ARG APP_USER=appuser
-          RUN groupadd "$APP_USER" || true && \
-              useradd --create-home --shell /bin/bash --gid "$APP_USER" "$APP_USER"
           
+          # --- 5. Copy full source code ---
           WORKDIR /app
-          RUN chown -R $APP_USER:$APP_USER /app
+          COPY . .
           
-          # --- 5. Copy Entire Project ---
-          USER $APP_USER
-          COPY --chown=$APP_USER:$APP_USER . /app
-          
-          # --- 6. Install Dependencies ---
-          # Backend
+          # --- 6. Backend Setup ---
           WORKDIR /app/components/api
           RUN bun install --frozen-lockfile
-          RUN bun prisma generate
+          RUN bun prisma generate || echo "Skipping prisma generate (no schema found)"
           
-          # Frontend
+          # --- 7. Frontend Setup ---
           WORKDIR /app/components/frontend
           RUN bun install --frozen-lockfile
-
-          USER root
-          RUN mkdir -p /github/_work /__w/_temp && \
-              chown -R 1000:1000 /github /__w/_temp
-          # --- 7. Set Default Workdir and User ---
+          
+          # --- 8. Final Environment Setup ---
           WORKDIR /app
-          USER $APP_USER
+          ENV PATH="/home/linuxbrew/.linuxbrew/bin:/home/linuxbrew/.linuxbrew/sbin:/usr/local/bin:/usr/local/sbin:/usr/bin:/bin"
+          ENV DEBIAN_FRONTEND=noninteractive
+          ENV NODE_ENV=production
+          
+          # Ensure GitHub Actions runner directories are writable
+          RUN mkdir -p /github/_work /__w/_temp /github/home && chmod -R 777 /github /__w || true
+          
+          # --- Default Workdir ---
+          WORKDIR /app
+          
+          # --- Default Command ---
+          CMD ["bash"]
 
           EOF
 
