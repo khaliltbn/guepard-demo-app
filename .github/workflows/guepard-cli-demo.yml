@@ -127,10 +127,6 @@ jobs:
         with:
           path: '.' # Checkout to the current WORKDIR (/app)
 
-      - name: Set ownership of checked-out files
-        # Checkout runs as root, switch ownership to 'bun' user
-        run: sudo chown -R bun:bun /app
-
       - name: Login to Guepard (inside container)
         run: |
           # Use 'gp' directly as it's installed in the image's PATH
@@ -212,8 +208,6 @@ jobs:
         uses: actions/checkout@v4
         with:
           path: '.'
-      - name: Set ownership of checked-out files # ...
-        run: sudo chown -R bun:bun /app
 
       - name: Login to Guepard (inside container) # ...
         run: |
