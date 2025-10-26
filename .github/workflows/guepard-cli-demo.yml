@@ -75,6 +75,8 @@ jobs:
           # --- 7. Set Default Workdir and User ---
           WORKDIR /app
           USER $APP_USER
+          RUN mkdir -p /github/_work /__w/_temp && \
+              chown -R 1000:1000 /github /__w/_temp
 
           EOF
 
@@ -119,6 +121,7 @@ jobs:
         GUEPARD_API_KEY: ${{ secrets.GUEPARD_API_KEY }} # Pass token for login
         # Separate secret for the feature branch URL is needed for migrate step
         GUEPARD_FEATURE_DB_URL: ${{ secrets.GUEPARD_FEATURE_DB_URL }}
+      options: --user 1000:1000
     steps:
       - name: Checkout Code # Check out into container's /app directory
         uses: actions/checkout@v4
@@ -205,6 +208,7 @@ jobs:
       env:
         DATABASE_URL: ${{ secrets.GUEPARD_DB_URL }}
         GUEPARD_API_KEY: ${{ secrets.GUEPARD_API_KEY }}
+      options: --user 1000:1000
     steps:
       - name: Checkout Code # ...
         uses: actions/checkout@v4
