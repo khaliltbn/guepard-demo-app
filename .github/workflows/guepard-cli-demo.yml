@@ -32,8 +32,8 @@ jobs:
           
           # --- 2. Install Bun Globally ---
           RUN curl -fsSL https://bun.sh/install | bash && \
-              mv /root/.bun/bin/bun /usr/local/bin/bun && \
-              mv /root/.bun/bin/bunx /usr/local/bin/bunx && \
+              cp /root/.bun/bin/bun /usr/local/bin/bun && \
+              cp /usr/local/bin/bun /usr/local/bin/bunx && \
               chmod +x /usr/local/bin/bun /usr/local/bin/bunx
           
           # --- 3. Install Homebrew & Guepard CLI ---
@@ -74,11 +74,9 @@ jobs:
           # Ensure GitHub Actions runner directories are writable
           RUN mkdir -p /github/_work /__w/_temp /github/home && chmod -R 777 /github /__w || true
           
-          # --- Default Workdir ---
           WORKDIR /app
-          
-          # --- Default Command ---
           CMD ["bash"]
+
 
           EOF
 
