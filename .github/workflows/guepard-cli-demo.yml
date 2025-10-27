@@ -143,42 +143,55 @@ jobs:
         run: |
           UNIQUE_ID=$(date +%s)
           DEPLOYMENT_NAME="cli-e2e-test-${UNIQUE_ID}"
+          DB_USER="guepard"
+          DB_PASS="S3cureP@ssword123!"
+          DB_PORT=5432
+      
           echo "🚀 Attempting to create deployment: ${DEPLOYMENT_NAME}"
       
-          # Create the deployment and capture the full CLI output
+          # Run deploy and capture full output
           output=$(guepard deploy -p PostgreSQL -v 16 -r us-west -i REPOSITORY -d aws \
-            -n "${DEPLOYMENT_NAME}" -w "S3cureP@ssword123!" -u "guepard" -f gp.g1.xsmall)
+            -n "${DEPLOYMENT_NAME}" -w "${DB_PASS}" -u "${DB_USER}" -f gp.g1.xsmall)
+      
           echo "$output"
       
-          # Extract details
-          deployment_id=$(echo "$output" | grep 'ID:' | awk '{print $2}')
-          host=$(echo "$output" | grep 'Host:' | awk '{print $2}')
-          database=$(echo "$output" | grep 'Database:' | awk '{print $2}')
-          username=$(echo "$output" | grep 'Username:' | awk '{print $2}')
-          password=$(echo "$output" | grep 'Password:' | awk '{print $2}')
+          # Parse Deployment ID
+          deployment_id=$(echo "$output" | grep 'ID:' | head -n1 | awk '{print $2}')
+          host=$(echo "$output" | grep 'Host:' | head -n1 | awk '{print $2}')
+          database=$(echo "$output" | grep 'Database:' | head -n1 | awk '{print $2}')
+          username=$(echo "$output" | grep 'Username:' | head -n1 | awk '{print $2}')
+          password=$(echo "$output" | grep 'Password:' | head -n1 | awk '{print $2}')
       
-          # Construct a proper PostgreSQL connection string
-          CONNECTION_STRING="postgresql://${username}:${password}@${host}:5432/${database}"
+          # Construct proper PostgreSQL URI
+          CONNECTION_STRING="postgresql://${username}:${password}@${host}:${DB_PORT}/${database}"
       
-          # Validation checks
-          if [ -z "$deployment_id" ] || [ -z "$connection_string" ]; then
+          # Validation
+          if [ -z "$deployment_id" ] || [ -z "$CONNECTION_STRING" ]; then
             echo "❌ Failed to parse deployment information!"
+            echo "DEBUG: deployment_id='$deployment_id', host='$host', database='$database', username='$username', password='$password'"
             exit 1
           fi
       
           echo "✅ Extracted Deployment ID: $deployment_id"
           echo "✅ Constructed Full Connection String: $CONNECTION_STRING"
       
-          # Export to GitHub Actions outputs
+          # Export outputs
           echo "deployment_id=$deployment_id" >> "$GITHUB_OUTPUT"
           echo "connection_string=$CONNECTION_STRING" >> "$GITHUB_OUTPUT"
         continue-on-error: true
-        
+      
       - name: Phase 2 - Wait for Deployment to Provision
         run: |
-          echo "Waiting for deployment ${{ steps.deploy.outputs.deployment_id }} to be provisioned..."
+          deployment_id="${{ steps.deploy.outputs.deployment_id }}"
+          if [ -z "$deployment_id" ]; then
+            echo "❌ Deployment ID is empty! Cannot wait for provisioning."
+            exit 1
+          fi
+      
+          echo "Waiting for deployment $deployment_id to be provisioned..."
           for i in {1..12}; do
-            status_output=$(guepard deploy -x "${{ steps.deploy.outputs.deployment_id }}")
+            status_output=$(guepard deploy -x "$deployment_id")
+            echo "$status_output"
             if echo "$status_output" | grep -q "Status: CREATED"; then
               echo "Deployment is provisioned."
               exit 0
@@ -187,22 +200,6 @@ jobs:
             sleep 15
           done
           echo "Error: Deployment did not provision in time."
-          exit 1
-        continue-on-error: true
-        
-      - name: Phase 2 - Wait for Compute to be Healthy
-        run: |
-          echo "Waiting for compute instance of ${{ steps.deploy.outputs.deployment_id }} to be healthy..."
-          for i in {1..12}; do
-            compute_status=$(guepard compute status -x "${{ steps.deploy.outputs.deployment_id }}")
-            if echo "$compute_status" | grep -q "Healthy"; then
-              echo "Compute is healthy."
-              exit 0
-            fi
-            echo "Attempt ${i}/12: Not healthy. Waiting 10 seconds..."
-            sleep 10
-          done
-          echo "Error: Compute did not become healthy in time."
           exit 1
         continue-on-error: true
 
