@@ -158,7 +158,7 @@ jobs:
           password=$(echo "$output" | grep 'Password:' | awk '{print $2}')
       
           # Construct a proper PostgreSQL connection string
-          connection_string="postgresql://${username}:${password}@${host}:5432/${database}"
+          CONNECTION_STRING="postgresql://${username}:${password}@${host}:5432/${database}"
       
           # Validation checks
           if [ -z "$deployment_id" ] || [ -z "$connection_string" ]; then
@@ -167,11 +167,11 @@ jobs:
           fi
       
           echo "✅ Extracted Deployment ID: $deployment_id"
-          echo "✅ Constructed Full Connection String: $connection_string"
+          echo "✅ Constructed Full Connection String: $CONNECTION_STRING"
       
           # Export to GitHub Actions outputs
           echo "deployment_id=$deployment_id" >> "$GITHUB_OUTPUT"
-          echo "connection_string=$connection_string" >> "$GITHUB_OUTPUT"
+          echo "connection_string=$CONNECTION_STRING" >> "$GITHUB_OUTPUT"
         continue-on-error: true
         
       - name: Phase 2 - Wait for Deployment to Provision
@@ -236,7 +236,7 @@ jobs:
       - name: 4. Apply Migration to Feature Branch
         working-directory: /app/components/api
         env:
-           DATABASE_URL: ${{ steps.deploy.outputs.connection_string }}
+           DATABASE_URL: ${{ steps.deploy.outputs.CONNECTION_STRING }}
         run: |
           echo "Applying migrations to '${{ env.BRANCH_NAME }}' branch..."
           bunx prisma migrate deploy
@@ -259,7 +259,7 @@ jobs:
             guepard branch delete "${{ env.BRANCH_NAME }}" --discard-changes true
           fi
           guepard deploy -x ${{ steps.deploy.outputs.deployment_id }} --delete
-          guepard deploy -x ${{ steps.deploy.outputs.connection_string }} --delete
+          guepard deploy -x ${{ steps.deploy.outputs.CONNECTION_STRING }} --delete
         continue-on-error: true
   
   data-time-travel-cli:
@@ -269,7 +269,7 @@ jobs:
     container:
       image: ${{ needs.build-custom-image.outputs.image_tag }}
       env:
-        DATABASE_URL: ${{ steps.deploy.outputs.connection_string }}
+        DATABASE_URL: ${{ steps.deploy.outputs.CONNECTION_STRING }}
         GUEPARD_API_KEY: ${{ secrets.GUEPARD_API_KEY }}
     steps:
       - name: Checkout Code
