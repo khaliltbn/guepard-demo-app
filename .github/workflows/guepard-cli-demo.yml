@@ -138,39 +138,38 @@ jobs:
           guepard usage
         continue-on-error: true
         
-      - name: Phase 2 - Create Deployment and Capture ID + Connection String
+      - name: Phase 2 - Create Deployment and Capture ID + Full Connection String
         id: deploy
         run: |
           UNIQUE_ID=$(date +%s)
           DEPLOYMENT_NAME="cli-e2e-test-${UNIQUE_ID}"
           echo "🚀 Attempting to create deployment: ${DEPLOYMENT_NAME}"
       
-          # Run the Guepard deployment command and capture its full output
+          # Create the deployment and capture the full CLI output
           output=$(guepard deploy -p PostgreSQL -v 16 -r us-west -i REPOSITORY -d aws \
             -n "${DEPLOYMENT_NAME}" -w "S3cureP@ssword123!" -u "guepard" -f gp.g1.xsmall)
-      
           echo "$output"
       
-          # Extract the deployment ID from the "ID:" line
+          # Extract details
           deployment_id=$(echo "$output" | grep 'ID:' | awk '{print $2}')
+          host=$(echo "$output" | grep 'Host:' | awk '{print $2}')
+          database=$(echo "$output" | grep 'Database:' | awk '{print $2}')
+          username=$(echo "$output" | grep 'Username:' | awk '{print $2}')
+          password=$(echo "$output" | grep 'Password:' | awk '{print $2}')
       
-          # Extract the connection URI from the "Ready-to-use Connection URI:" section
-          connection_string=$(echo "$output" | grep -A1 "Ready-to-use Connection URI" | tail -n1 | tr -d '[:space:]')
+          # Construct a proper PostgreSQL connection string
+          connection_string="postgresql://${username}:${password}@${host}:5432/${database}"
       
-          # Safety checks
-          if [ -z "$deployment_id" ]; then
-            echo "❌ Failed to parse deployment ID!"
-            exit 1
-          fi
-          if [ -z "$connection_string" ]; then
-            echo "❌ Failed to parse connection string!"
+          # Validation checks
+          if [ -z "$deployment_id" ] || [ -z "$connection_string" ]; then
+            echo "❌ Failed to parse deployment information!"
             exit 1
           fi
       
           echo "✅ Extracted Deployment ID: $deployment_id"
-          echo "✅ Extracted Connection String: $connection_string"
+          echo "✅ Constructed Full Connection String: $connection_string"
       
-          # Save both to GitHub Actions outputs
+          # Export to GitHub Actions outputs
           echo "deployment_id=$deployment_id" >> "$GITHUB_OUTPUT"
           echo "connection_string=$connection_string" >> "$GITHUB_OUTPUT"
         continue-on-error: true
