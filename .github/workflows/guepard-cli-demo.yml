@@ -258,6 +258,8 @@ jobs:
             echo "Deleting branch ${{ env.BRANCH_NAME }}..."
             guepard branch delete "${{ env.BRANCH_NAME }}" --discard-changes true
           fi
+          guepard deploy -x ${{ steps.deploy.outputs.deployment_id }} --delete
+          guepard deploy -x ${{ steps.deploy.outputs.connection_string }} --delete
         continue-on-error: true
   
   data-time-travel-cli:
