@@ -1,81 +1,111 @@
-name: Guepard E2E Demo Scenarios (Playwright)
+name: Guepard E2E Demo Scenarios (Playwright in Docker)
 
 on:
-  workflow_dispatch: # Allow manual triggering
+  workflow_dispatch:
 
 jobs:
-  install-deps:
-    # --- Same install-deps job as Version 1 ---
-    # (Includes Checkout, Setup Bun, Install Backend/Frontend Deps, Cache, Install Playwright)
-    name: Install Dependencies & Setup
+  # Job 1: Build preconfigured Docker image with all dependencies
+  build-custom-image:
+    name: Build Dependency Image
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    outputs:
+      image_tag: ghcr.io/${{ github.repository_owner }}/guepard-e2e-runner:${{ github.sha }}
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
-        
-      - name: Set up Bun
-        uses: oven-sh/setup-bun@v1
-        
-      - name: Install Frontend Dependencies
-        working-directory: ./components/frontend
-        run: bun install --frozen-lockfile
-        
-      - name: Install Backend Dependencies
-        working-directory: ./components/api
-        run: bun install --frozen-lockfile
-        
-      - name: Install Playwright Browsers
-        working-directory: ./components/frontend # Run where playwright is installed
-        run: bunx playwright install --with-deps
-        
-      - name: Cache Bun Dependencies # Cache all node_modules
-        uses: actions/cache@v4
-        with:
-          path: |
-            ~/.bun/install/cache
-            ./components/frontend/node_modules
-            ./components/api/node_modules
-          key: ${{ runner.os }}-bun-${{ hashFiles('**/bun.lockb') }}
-          restore-keys: |
-            ${{ runner.os }}-bun-
-            
-      # Add Guepard CLI install/login steps here
-      - name: Install Guepard CLI
+
+      - name: Create Dockerfile for Runner
         run: |
-          echo "Installing Guepard CLI..."
-          brew tap guepard-corp/guepard
-          brew install guepard
-          echo "guepard-cli installed successfully"
+          cat <<'EOF' > Dockerfile.runner
+          FROM ubuntu:24.04
           
-      - name: Login to Guepard
-        run: |
-          echo "Logging into Guepard..."
-          guepard login --code ${{ secrets.GUEPARD_API_KEY }}
-          echo "Successfully logged into Guepard"
+          ENV DEBIAN_FRONTEND=noninteractive
+          RUN apt-get update && apt-get install -y --no-install-recommends \
+              build-essential curl git sudo unzip ca-certificates procps file \
+           && rm -rf /var/lib/apt/lists/*
+          
+          # Install Bun
+          RUN curl -fsSL https://bun.sh/install | bash && \
+              cp /root/.bun/bin/bun /usr/local/bin/bun && \
+              cp /root/.bun/bin/bunx /usr/local/bin/bunx && \
+              chmod +x /usr/local/bin/bun /usr/local/bin/bunx
+          
+          # Install Homebrew & Guepard CLI
+          RUN useradd -ms /bin/bash linuxbrew && \
+              echo "linuxbrew ALL=(ALL) NOPASSWD: ALL" >> /etc/sudoers.d/linuxbrew
+          USER linuxbrew
+          WORKDIR /home/linuxbrew
+          RUN /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+          ENV PATH="/home/linuxbrew/.linuxbrew/bin:/home/linuxbrew/.linuxbrew/sbin:${PATH}"
+          RUN brew tap guepard-corp/guepard && brew install guepard
+          RUN mkdir -p /home/linuxbrew/.guepard
+          USER root
+          
+          # Copy project code
+          WORKDIR /app
+          COPY . .
+          
+          # Backend setup
+          WORKDIR /app/components/api
+          RUN bun install --frozen-lockfile
+          RUN bun prisma generate || echo "No schema found"
+          
+          # Frontend setup
+          WORKDIR /app/components/frontend
+          RUN bun install --frozen-lockfile
+          RUN bunx playwright install --with-deps
+          
+          WORKDIR /app
+          ENV PATH="/home/linuxbrew/.linuxbrew/bin:/home/linuxbrew/.linuxbrew/sbin:/usr/local/bin:/usr/local/sbin:/usr/bin:/bin"
+          ENV DEBIAN_FRONTEND=noninteractive
+          ENV NODE_ENV=production
+          
+          RUN mkdir -p /github/_work /__w/_temp /github/home && chmod -R 777 /github /__w || true
+          
+          WORKDIR /app
+          CMD ["bash"]
+          EOF
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ./Dockerfile.runner
+          push: true
+          tags: ghcr.io/${{ github.repository_owner }}/guepard-e2e-runner:${{ github.sha }}
 
   safe-feature-development-e2e:
     name: Scenario 1 (E2E) - Safe Feature Development
     runs-on: ubuntu-latest
-    needs: install-deps
-    env:
-      # Use main DB URL for initial server start
-      DATABASE_URL: ${{ secrets.GUEPARD_DB_URL }}
-      SHADOW_DATABASE_URL: ${{ secrets.GUEPARD_SHADOW_DB_URL }}
-      # Separate URL for the feature branch needed for specific steps
-      GUEPARD_FEATURE_DB_URL: ${{ secrets.GUEPARD_FEATURE_DB_URL }} # Define this secret
-      # GUEPARD_API_KEY: ${{ secrets.GUEPARD_API_KEY }}
-      # For Frontend Build & Playwright Tests
-      VITE_API_BASE_URL: http://localhost:3001/api
-      PLAYWRIGHT_BASE_URL: http://localhost:5173 # Port frontend runs on
-      CI: true
+    needs: build-custom-image
+    container:
+      image: ${{ needs.build-custom-image.outputs.image_tag }}
+      env:
+        DATABASE_URL: ${{ secrets.GUEPARD_DB_URL }}
+        SHADOW_DATABASE_URL: ${{ secrets.GUEPARD_SHADOW_DB_URL }}
+        GUEPARD_FEATURE_DB_URL: ${{ secrets.GUEPARD_FEATURE_DB_URL }}
+        GUEPARD_API_KEY: ${{ secrets.GUEPARD_API_KEY }}
+        VITE_API_BASE_URL: http://localhost:3001/api
+        PLAYWRIGHT_BASE_URL: http://localhost:5173
+        CI: true
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
-        
-      - name: Set up Bun
-        uses: oven-sh/setup-bun@v1
-        
-      - name: Restore Cached Dependencies
+
+      - name: Restore Dependencies Cache
         uses: actions/cache@v4
         with:
           path: |
@@ -85,27 +115,27 @@ jobs:
           key: ${{ runner.os }}-bun-${{ hashFiles('**/bun.lockb') }}
           restore-keys: |
             ${{ runner.os }}-bun-
-            
+
       - name: Install Dependencies if Cache Miss
         run: |
           cd components/frontend && bun install --frozen-lockfile
           cd ../api && bun install --frozen-lockfile
-          
+
       - name: Install Playwright Browsers if Cache Miss
         working-directory: ./components/frontend
         run: bunx playwright install --with-deps
-        
-      # --- Scenario Execution ---
+
+      # Scenario Execution
       - name: 0. Ensure Clean State & Baseline (Main Branch)
         working-directory: ./components/api
         run: |
-          # gp branch switch main
-          # Baseline logic
           bunx prisma migrate deploy
 
       - name: 1. Create Feature Branch in Guepard
         run: |
-          # gp branch create feature-discounts-e2e --from main
+          BRANCH_NAME="feature-discounts-e2e-${{ github.run_id }}"
+          guepard branch create "$BRANCH_NAME" -b main -k
+          echo "BRANCH_NAME=$BRANCH_NAME" >> $GITHUB_ENV
           sleep 5
 
       - name: 2. Apply Code Patch Locally
@@ -113,61 +143,47 @@ jobs:
 
       - name: 3. Resolve Baseline & Apply Migration to Feature Branch
         working-directory: ./components/api
-        env: # Override DATABASE_URL just for migration
-           DATABASE_URL: ${{ env.GUEPARD_FEATURE_DB_URL }}
+        env:
+          DATABASE_URL: ${{ env.GUEPARD_FEATURE_DB_URL }}
         run: |
-          # Resolve baseline for the new branch
-          BASELINE_MIGRATION_ID=$(ls -t prisma/migrations | grep 'baseline' | head -n 1) # Example
+          BASELINE_MIGRATION_ID=$(ls -t prisma/migrations | grep 'baseline' | head -n 1)
           bunx prisma migrate resolve --applied $BASELINE_MIGRATION_ID
-          # Deploy new migration(s)
           bunx prisma migrate deploy
 
       - name: 4. Build Frontend
         working-directory: ./components/frontend
-        run: bun run build # Build static assets
+        run: bun run build
 
       - name: 5. Start Backend (Main DB) & Run Playwright Test
         run: |
-          echo "Starting backend server (Main DB) in background..."
           cd components/api
-          # Start backend using the MAIN DB URL
           DATABASE_URL=${{ secrets.GUEPARD_DB_URL }} nohup bun run start > ../../backend.log 2>&1 &
           BACKEND_PID=$!
           cd ../..
-          echo "Backend PID: $BACKEND_PID"
-          sleep 15 # Wait longer for server to start serving static files
-
-          echo "Running Playwright tests against MAIN branch UI..."
+          sleep 15
           cd components/frontend
           bunx playwright test tests/discount-feature.spec.ts --project=chromium --grep "@main"
           cd ../..
-
-          echo "Stopping backend..."
           kill $BACKEND_PID || echo "Backend already stopped."
           sleep 5
 
       - name: 6. Start Backend (Feature DB) & Run Playwright Test
         run: |
-          echo "Starting backend server (Feature DB) in background..."
           cd components/api
-          # Start backend using the same DATABASE_URL (Guepard handles branch isolation)
           DATABASE_URL=${{ secrets.GUEPARD_DB_URL }} nohup bun run start > ../../backend.log 2>&1 &
           BACKEND_PID=$!
           cd ../..
-          echo "Backend PID: $BACKEND_PID"
           sleep 15
-
-          echo "Running Playwright tests against FEATURE branch UI..."
           cd components/frontend
           bunx playwright test tests/discount-feature.spec.ts --project=chromium --grep "@feature"
           cd ../..
-
-          echo "Stopping backend..."
           kill $BACKEND_PID || echo "Backend already stopped."
 
       - name: 7. Cleanup
         if: always()
         run: |
           echo "Cleaning up..."
-          # gp branch switch main # Switch active back
-          # gp branch delete feature-discounts-e2e -f # Delete branch
+          guepard checkout main
+          if [ -n "$BRANCH_NAME" ]; then
+            guepard branch delete "$BRANCH_NAME" --discard-changes true
+          fi
