@@ -227,7 +227,7 @@ jobs:
         run: |
           echo "Ensuring 'main' branch is active and schema is baseline..."
           echo "Applying migrations to main..."
-          bunx prisma migrate deploy
+          DATABASE_URL=${{ DATABASE_URL }} SHADOW_DATABASE_URL=${{ DATABASE_URL }}  bunx prisma migrate deploy
         continue-on-error: true
   
       - name: 2. Create Feature Branch in Guepard
