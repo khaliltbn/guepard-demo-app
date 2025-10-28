@@ -128,12 +128,13 @@ jobs:
   
       - name: Phase 1 - Authentication
         env:
-          GUEPARD_API_TOKEN: ${{ secrets.GUEPARD_API_TOKEN }}
+          GUEPARD_API_TOKEN: ${{ secrets.GUEPARD_API_TOKEN_DEV }}
         run: |
           echo "Logging out for a clean session..."
           guepard logout || true
           echo "Logging in with API token..."
-          guepard login -c "$GUEPARD_API_TOKEN"
+          guepard config -a https://api.dev.guepard.run
+          guepard login -c "$GUEPARD_API_TOKEN_DEV"
           echo "Verifying login via usage command..."
           guepard usage
         continue-on-error: true
