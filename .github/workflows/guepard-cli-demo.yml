@@ -136,7 +136,7 @@ jobs:
           guepard config -a https://api.dev.guepard.run
           guepard login -c "$GUEPARD_API_TOKEN_DEV"
           echo "Verifying login via usage command..."
-          guepard usage
+          guepard usage -c "$GUEPARD_API_TOKEN_DEV"
         continue-on-error: true
         
       - name: Phase 2 - Create Deployment and Capture ID + Full Connection String
@@ -147,7 +147,6 @@ jobs:
           DEPLOYMENT_NAME="cli-e2e-test-${UNIQUE_ID}"
           DB_USER="guepard"
           DB_PASS="S3cureP@ssword123!"
-          DB_PORT=5432
       
           echo "🚀 Attempting to create deployment: ${DEPLOYMENT_NAME}"
       
