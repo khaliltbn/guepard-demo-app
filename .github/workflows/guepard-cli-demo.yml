@@ -134,9 +134,9 @@ jobs:
           guepard logout || true
           echo "Logging in with API token..."
           guepard config -a https://api.dev.guepard.run
-          guepard login -c "$GUEPARD_API_TOKEN_DEV"
+          guepard login --code eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJhZjg0NDBhOC1kNTk0LTQ3ODgtODJhMi03YjYzNDM4ZWE3NmQiLCJhdWQiOiJhdXRoZW50aWNhdGVkIiwicm9sZSI6ImF1dGhlbnRpY2F0ZWQiLCJzY29wZXMiOlsiYWRtaW4iXSwiZXhwIjoxNzY0MTcxNDczLCJ0b2tlbl9pZCI6ImU3M2Q0YThhLWY0ZGUtNDZhMi04ZjNlLTUyMDYzYTU3M2ZiMiIsImlhdCI6MTc2MTU3OTQ3NX0.g5uK-dt4upwfaULKymBzDf-hVupwwFW8mONCdNX_cYc
           echo "Verifying login via usage command..."
-          guepard usage -c "$GUEPARD_API_TOKEN_DEV"
+          guepard usage
         continue-on-error: true
         
       - name: Phase 2 - Create Deployment and Capture ID + Full Connection String
