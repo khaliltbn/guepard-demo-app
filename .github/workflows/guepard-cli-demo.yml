@@ -107,6 +107,7 @@ jobs:
           tags: ${{ steps.image_tag_def.outputs.image_tag }} # Use the defined tag
           cache-from: type=gha
           cache-to: type=gha,mode=max
+          no-cache: true
 
   # Job 2: Run CLI Scenario 1 using the custom image
   safe-feature-development-cli:
