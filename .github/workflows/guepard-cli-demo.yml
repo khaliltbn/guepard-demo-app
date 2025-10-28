@@ -268,13 +268,6 @@ jobs:
         if: always()
         run: |
           echo "Cleaning up..."
-          guepard checkout main
-          if [ -n "${{ env.BRANCH_NAME }}" ]; then
-            echo "Deleting branch ${{ env.BRANCH_NAME }}..."
-            guepard branch delete "${{ env.BRANCH_NAME }}" --discard-changes true
-          fi
-          guepard deploy -x ${{ steps.deploy.outputs.deployment_id }} --delete
-          guepard deploy -x ${{ steps.deploy.outputs.CONNECTION_STRING }} --delete
           
           if [ -n "${{ steps.deploy.outputs.deployment_id }}" ]; then
             echo "Cleaning up deployment: ${{ steps.deploy.outputs.deployment_id }}"
