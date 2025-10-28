@@ -275,7 +275,16 @@ jobs:
           fi
           guepard deploy -x ${{ steps.deploy.outputs.deployment_id }} --delete
           guepard deploy -x ${{ steps.deploy.outputs.CONNECTION_STRING }} --delete
+          
+          if [ -n "${{ steps.deploy.outputs.deployment_id }}" ]; then
+            echo "Cleaning up deployment: ${{ steps.deploy.outputs.deployment_id }}"
+            # Use '-y' for non-interactive confirmation
+            guepard deploy -x "${{ steps.deploy.outputs.deployment_id }}" -y
+          else
+            echo "No deployment ID was captured, skipping deletion."
+          fi
         continue-on-error: true
+      
   
   data-time-travel-cli:
     name: Scenario 2 (CLI) - Data Time Travel
