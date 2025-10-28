@@ -116,8 +116,6 @@ jobs:
     container:
       image: ${{ needs.build-custom-image.outputs.image_tag }}
       env:
-        DATABASE_URL: ${{ secrets.GUEPARD_DB_URL }}
-        SHADOW_DATABASE_URL: ${{ secrets.GUEPARD_SHADOW_DB_URL }}
         GUEPARD_API_KEY: ${{ secrets.GUEPARD_API_KEY }}
     steps:
       - name: Checkout Code
@@ -221,13 +219,98 @@ jobs:
           echo "Error: Compute did not become healthy in time."
           exit 1
         continue-on-error: true
+
+      - name: Phase 2 - Create Deployment and Capture ID + Full Connection String
+        shell: bash
+        id: deploy-shadow
+        run: |
+          UNIQUE_ID=$(date +%s)
+          DEPLOYMENT_NAME="cli-e2e-test-shadow-${UNIQUE_ID}"
+          DB_USER="guepard"
+          DB_PASS="S3cureP@ssword123!"
+      
+          echo "🚀 Attempting to create deployment: ${DEPLOYMENT_NAME}"
+      
+          # Run deploy and capture full output
+          output=$(guepard deploy -p PostgreSQL -v 16 -r us-west -i REPOSITORY -d aws \
+            -n "${DEPLOYMENT_NAME}" -w "${DB_PASS}" -u "${DB_USER}" -f gp.g1.xsmall)
+      
+          echo "$output"
+      
+          # Parse Deployment ID
+          deployment_id=$(echo "$output" | grep 'ID:' | head -n1 | awk '{print $2}')
+          host=$(echo "$output" | grep 'Host:' | head -n1 | awk '{print $2}')
+          database=$(echo "$output" | grep 'Database:' | head -n1 | awk '{print $2}')
+          username=$(echo "$output" | grep 'Username:' | head -n1 | awk '{print $2}')
+          password=$(echo "$output" | grep 'Password:' | head -n1 | awk '{print $2}')
+      
+          # Construct proper PostgreSQL URI
+          CONNECTION_STRING_SHADOW="postgresql://${username}:${password}@${host}:${DB_PORT}/${database}"
+      
+          # Validation
+          if [ -z "$deployment_id" ] || [ -z "$CONNECTION_STRING_SHADOW" ]; then
+            echo "❌ Failed to parse deployment information!"
+            echo "DEBUG: deployment_id='$deployment_id', host='$host', database='$database', username='$username', password='$password'"
+            exit 1
+          fi
+      
+          echo "✅ Extracted Deployment ID: $deployment_id"
+          echo "✅ Constructed Full Connection String: $CONNECTION_STRING"
+      
+          # Export outputs
+          echo "deployment_id=$deployment_id" >> "$GITHUB_OUTPUT"
+          echo "connection_string=$CONNECTION_STRING_SHADOW" >> "$GITHUB_OUTPUT"
+        continue-on-error: true
+      
+      - name: Phase 2 - Wait for Deployment to Provision
+        shell: bash
+        run: |
+          deployment_id="${{ steps.deploy-shadow.outputs.deployment_id }}"
+          if [ -z "$deployment_id" ]; then
+            echo "❌ Deployment ID is empty! Cannot wait for provisioning."
+            exit 1
+          fi
+      
+          echo "Waiting for deployment $deployment_id to be provisioned..."
+          for i in {1..12}; do
+            status_output=$(guepard deploy -x "$deployment_id")
+            echo "$status_output"
+            if echo "$status_output" | grep -q "Status: CREATED"; then
+              echo "Deployment is provisioned."
+              exit 0
+            fi
+            echo "Attempt $i/12: Not ready. Waiting 15 seconds..."
+            sleep 15
+          done
+          echo "Error: Deployment did not provision in time."
+          exit 1
+        continue-on-error: true
+
+      - name: Phase 2 - Wait for Compute to be Healthy
+        shell: bash
+        run: |
+          echo "Waiting for compute instance of ${{ steps.deploy-shadow.outputs.deployment_id }} to be healthy..."
+          for i in {1..12}; do
+            compute_status=$(guepard compute status -x "${{ steps.deploy-shadow.outputs.deployment_id }}")
+            if echo "$compute_status" | grep -q "Healthy"; then
+              echo "Compute is healthy."
+              exit 0
+            fi
+            echo "Attempt ${i}/12: Not healthy. Waiting 10 seconds..."
+            sleep 10
+          done
+          echo "Error: Compute did not become healthy in time."
+          exit 1
+        continue-on-error: true
   
       - name: 1. Ensure Main Branch is Clean & Baseline
         working-directory: /app/components/api
         run: |
           echo "Ensuring 'main' branch is active and schema is baseline..."
           echo "Applying migrations to main..."
-          DATABASE_URL=${{ secrets.GUEPARD_DB_URL }} SHADOW_DATABASE_URL=${{ secrets.GUEPARD_DB_URL }} bunx prisma migrate deploy
+          DATABASE_URL=${{ steps.deploy.outputs.connection_string }}
+          SHADOW_DATABASE_URL=${{ steps.deploy-shadow.outputs.CONNECTION_STRING_SHADOW }}
+          bunx prisma migrate deploy
         continue-on-error: true
   
       - name: 2. Create Feature Branch in Guepard
@@ -273,6 +356,7 @@ jobs:
             echo "Cleaning up deployment: ${{ steps.deploy.outputs.deployment_id }}"
             # Use '-y' for non-interactive confirmation
             guepard deploy -x "${{ steps.deploy.outputs.deployment_id }}" -y
+            guepard deploy -x "${{ steps.deploy-shadow.outputs.deployment_id }}" -y
           else
             echo "No deployment ID was captured, skipping deletion."
           fi
